@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Lucro — Motorista de App</title>
+<meta name="description" content="Calculadora de lucro real para motoristas de Uber, 99, InDrive e outras plataformas. Descubra seu lucro por hora, por km e se a corrida vale a pena.">
+<meta name="theme-color" content="#fcfcfb">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__in">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">🚗</span>
+      <span class="brand__text">
+        <strong>Lucro na Direção</strong>
+        <small>Calculadora para motoristas de app</small>
+      </span>
+    </div>
+    <button type="button" id="themeToggle" class="icon-btn" aria-label="Alternar tema claro/escuro">
+      <span data-theme-icon>◐</span>
+    </button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Seções da calculadora">
+  <button role="tab" id="tab-jornada"  aria-controls="panel-jornada"  aria-selected="true"  class="tab">Jornada</button>
+  <button role="tab" id="tab-corrida"  aria-controls="panel-corrida"  aria-selected="false" class="tab">Vale a pena?</button>
+  <button role="tab" id="tab-carro"    aria-controls="panel-carro"    aria-selected="false" class="tab">Meu carro</button>
+  <button role="tab" id="tab-historico" aria-controls="panel-historico" aria-selected="false" class="tab">Histórico</button>
+</nav>
+
+<main class="wrap">
+
+<!-- ══════════════════ JORNADA ══════════════════ -->
+<section id="panel-jornada" role="tabpanel" aria-labelledby="tab-jornada" class="panel">
+
+  <div class="card">
+    <div class="card__head">
+      <h2>Quanto você faturou</h2>
+      <div class="seg" role="group" aria-label="Período da jornada">
+        <button type="button" class="seg__btn is-on" data-periodo="dia">Dia</button>
+        <button type="button" class="seg__btn" data-periodo="semana">Semana</button>
+        <button type="button" class="seg__btn" data-periodo="mes">Mês</button>
+      </div>
+    </div>
+    <p class="hint">Lance o valor que a plataforma mostra como <b>seu</b> — já sem a comissão dela. Os custos fixos do carro são rateados automaticamente para o período escolhido.</p>
+
+    <div id="ganhosList" class="ganhos"></div>
+    <button type="button" id="addGanho" class="btn btn--ghost btn--sm">+ Adicionar plataforma</button>
+
+    <div class="grid grid--3 mt">
+      <label class="field">
+        <span class="field__label">Gorjetas e extras recebidos</span>
+        <span class="field__wrap"><i class="field__pre">R$</i>
+          <input type="text" inputmode="decimal" data-jor="gorjetas" placeholder="0,00"></span>
+      </label>
+      <label class="field">
+        <span class="field__label">Horas trabalhadas <b class="req">*</b></span>
+        <span class="field__wrap">
+          <input type="text" inputmode="decimal" data-jor="horas" placeholder="0"><i class="field__suf">h</i></span>
+      </label>
+      <label class="field">
+        <span class="field__label">Km rodados <b class="req">*</b></span>
+        <span class="field__wrap">
+          <input type="text" inputmode="decimal" data-jor="km" placeholder="0"><i class="field__suf">km</i></span>
+        <span class="field__help">Conte tudo: com passageiro, deslocamento e retorno.</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <details open>
+      <summary><h2>Gastos do dia <small class="tag" id="extrasTag"></small></h2></summary>
+      <div class="grid grid--3 mt">
+        <label class="field"><span class="field__label">Pedágio</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="pedagio" placeholder="0,00"></span></label>
+        <label class="field"><span class="field__label">Estacionamento</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="estacionamento" placeholder="0,00"></span></label>
+        <label class="field"><span class="field__label">Alimentação</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="alimentacao" placeholder="0,00"></span></label>
+        <label class="field"><span class="field__label">Lavagem avulsa</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="lavagemAvulsa" placeholder="0,00"></span></label>
+        <label class="field"><span class="field__label">Multas</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="multas" placeholder="0,00"></span></label>
+        <label class="field"><span class="field__label">Outros gastos</span>
+          <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-jor="outrosGastos" placeholder="0,00"></span></label>
+      </div>
+    </details>
+  </div>
+
+  <!-- ─────── RESULTADO ─────── -->
+  <div class="card card--result">
+    <div class="hero">
+      <span class="hero__label" id="heroLabel">Lucro líquido</span>
+      <output class="hero__value" id="heroValue">R$ 0,00</output>
+      <span class="hero__sub" id="heroSub">Preencha os ganhos, as horas e os km.</span>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <figure class="viz-root chart" id="chartFig">
+      <figcaption>
+        <h3 id="chartTitle">Para onde vai o seu faturamento</h3>
+        <p class="chart__sub" id="chartSub">Divisão de cada real que entrou na jornada.</p>
+      </figcaption>
+      <div class="chart__bar" id="chartBar" role="img" aria-labelledby="chartTitle" aria-describedby="detalhe"></div>
+      <div class="chart__marker" id="chartMarker" hidden><span></span><b></b></div>
+      <ul class="legend" id="chartLegend"></ul>
+    </figure>
+
+    <h3 class="mt">Detalhamento</h3>
+    <div class="table-scroll">
+      <table class="table" id="detalhe">
+        <caption class="sr-only">Receitas e custos da jornada, em reais</caption>
+        <thead><tr><th scope="col">Item</th><th scope="col" class="num">Valor</th><th scope="col" class="num">Por km</th><th scope="col" class="num">% receita</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="salvarJornada" class="btn">Salvar no histórico</button>
+      <button type="button" id="copiarResumo" class="btn btn--ghost">Copiar resumo</button>
+      <button type="button" id="limparJornada" class="btn btn--ghost">Limpar jornada</button>
+    </div>
+    <p class="hint" id="flash" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- ══════════════════ VALE A PENA ══════════════════ -->
+<section id="panel-corrida" role="tabpanel" aria-labelledby="tab-corrida" class="panel" hidden>
+  <div class="card">
+    <h2>Vale a pena aceitar essa corrida?</h2>
+    <p class="hint">Da corrida saem só os custos que variam com o uso do carro: combustível, pneus e revisão. Os custos fixos entram no <b>alvo por hora</b> — rateio dos fixos mais a sua meta de lucro.</p>
+
+    <div class="grid grid--2 mt">
+      <label class="field"><span class="field__label">Valor oferecido <b class="req">*</b></span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cor="valor" placeholder="0,00"></span></label>
+      <label class="field"><span class="field__label">Tempo total estimado <b class="req">*</b></span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cor="minutos" placeholder="0"><i class="field__suf">min</i></span>
+        <span class="field__help">Deslocamento + corrida.</span></label>
+      <label class="field"><span class="field__label">Km até o passageiro</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cor="kmDeslocamento" placeholder="0"><i class="field__suf">km</i></span></label>
+      <label class="field"><span class="field__label">Km da corrida <b class="req">*</b></span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cor="kmCorrida" placeholder="0"><i class="field__suf">km</i></span></label>
+    </div>
+  </div>
+
+  <div class="card card--result">
+    <div class="verdict" id="verdict" data-state="idle">
+      <span class="verdict__icon" aria-hidden="true">–</span>
+      <span class="verdict__text">
+        <strong id="verdictTitle">Preencha a corrida</strong>
+        <small id="verdictSub">Informe valor, km e tempo para ver o resultado.</small>
+      </span>
+    </div>
+    <div class="tiles" id="corridaTiles"></div>
+    <div class="table-scroll">
+      <table class="table" id="corridaTable">
+        <caption class="sr-only">Conta da corrida</caption>
+        <thead><tr><th scope="col">Item</th><th scope="col" class="num">Valor</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ MEU CARRO ══════════════════ -->
+<section id="panel-carro" role="tabpanel" aria-labelledby="tab-carro" class="panel" hidden>
+  <p class="hint hint--top">Preencha uma vez. Fica salvo no seu navegador e alimenta todas as contas.</p>
+
+  <div class="card">
+    <h2>Combustível</h2>
+    <div class="grid grid--3 mt">
+      <label class="field"><span class="field__label">Tipo</span>
+        <span class="field__wrap"><select data-cfg="combustivel">
+          <option value="gasolina">Gasolina</option>
+          <option value="etanol">Etanol</option>
+          <option value="diesel">Diesel</option>
+          <option value="gnv">GNV</option>
+          <option value="eletrico">Elétrico</option>
+        </select></span></label>
+      <label class="field"><span class="field__label">Preço <span data-fuel-price-unit>por litro</span></span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="precoCombustivel" placeholder="0,00"></span></label>
+      <label class="field"><span class="field__label">Consumo médio</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="consumo" placeholder="0"><i class="field__suf" data-fuel-consumo-unit>km/L</i></span></label>
+    </div>
+    <p class="callout" id="custoKmCombustivel">—</p>
+  </div>
+
+  <div class="card">
+    <h2>Desgaste por km</h2>
+    <p class="hint">Peças que você troca por quilometragem, não por mês.</p>
+    <div class="grid grid--2 mt">
+      <label class="field"><span class="field__label">Jogo de pneus — preço</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="pneuPreco" placeholder="0,00"></span></label>
+      <label class="field"><span class="field__label">Duração dos pneus</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="pneuDuracao" placeholder="0"><i class="field__suf">km</i></span></label>
+      <label class="field"><span class="field__label">Revisão (óleo, filtros, mão de obra)</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="revisaoPreco" placeholder="0,00"></span></label>
+      <label class="field"><span class="field__label">Revisão a cada</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="revisaoIntervalo" placeholder="0"><i class="field__suf">km</i></span></label>
+    </div>
+    <p class="callout" id="custoKmDesgaste">—</p>
+  </div>
+
+  <div class="card">
+    <h2>Custos fixos mensais</h2>
+    <p class="hint">O que você paga mesmo parado. Se você aluga o carro, deixe financiamento, IPVA e depreciação em zero.</p>
+    <div class="grid grid--2 mt">
+      <label class="field"><span class="field__label">Aluguel do veículo</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="aluguel" placeholder="0,00">
+          <select data-cfg="aluguelPeriodo" class="field__inline-select">
+            <option value="semana">/ semana</option>
+            <option value="mes">/ mês</option>
+          </select></span></label>
+      <label class="field"><span class="field__label">Parcela do financiamento</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="financiamento" placeholder="0,00"><i class="field__suf">/mês</i></span></label>
+      <label class="field"><span class="field__label">Seguro ou proteção veicular</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="seguro" placeholder="0,00"><i class="field__suf">/mês</i></span></label>
+      <label class="field"><span class="field__label">IPVA + licenciamento</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="ipva" placeholder="0,00"><i class="field__suf">/ano</i></span></label>
+      <label class="field"><span class="field__label">Manutenção imprevista</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="manutencaoMensal" placeholder="0,00"><i class="field__suf">/mês</i></span>
+        <span class="field__help">Freios, suspensão, elétrica — a média que você reserva.</span></label>
+      <label class="field"><span class="field__label">Lavagem</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="lavagem" placeholder="0,00"><i class="field__suf">/mês</i></span></label>
+      <label class="field"><span class="field__label">Celular e internet</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="celular" placeholder="0,00"><i class="field__suf">/mês</i></span></label>
+      <label class="field"><span class="field__label">Outros fixos</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="outrosFixos" placeholder="0,00"><i class="field__suf">/mês</i></span></label>
+    </div>
+    <p class="callout" id="totalFixos">—</p>
+  </div>
+
+  <div class="card">
+    <h2>Depreciação</h2>
+    <p class="hint">O carro perde valor rodando. Ignorar isso é a forma mais comum de achar que se está lucrando.</p>
+    <label class="check">
+      <input type="checkbox" data-cfg="usarDepreciacao">
+      <span>Incluir depreciação nos cálculos</span>
+    </label>
+    <div class="grid grid--2 mt">
+      <label class="field"><span class="field__label">Valor atual do veículo</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="valorVeiculo" placeholder="0,00"></span></label>
+      <label class="field"><span class="field__label">Perda de valor por ano</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="depreciacaoAnual" placeholder="0"><i class="field__suf">%</i></span></label>
+    </div>
+    <p class="callout" id="totalDepreciacao">—</p>
+  </div>
+
+  <div class="card">
+    <h2>Sua rotina e sua meta</h2>
+    <div class="grid grid--3 mt">
+      <label class="field"><span class="field__label">Dias trabalhados por mês</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="diasPorMes" placeholder="26"><i class="field__suf">dias</i></span></label>
+      <label class="field"><span class="field__label">Horas por dia</span>
+        <span class="field__wrap"><input type="text" inputmode="decimal" data-cfg="horasPorDia" placeholder="10"><i class="field__suf">h</i></span></label>
+      <label class="field"><span class="field__label">Meta de lucro por hora</span>
+        <span class="field__wrap"><i class="field__pre">R$</i><input type="text" inputmode="decimal" data-cfg="metaHora" placeholder="0,00"><i class="field__suf">/h</i></span></label>
+    </div>
+    <p class="callout" id="resumoCarro">—</p>
+    <div class="actions">
+      <button type="button" id="resetCfg" class="btn btn--ghost btn--sm">Restaurar valores de exemplo</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ HISTÓRICO ══════════════════ -->
+<section id="panel-historico" role="tabpanel" aria-labelledby="tab-historico" class="panel" hidden>
+  <div class="card">
+    <div class="card__head"><h2>Jornadas salvas</h2>
+      <button type="button" id="limparHistorico" class="btn btn--ghost btn--sm">Apagar tudo</button></div>
+    <div class="tiles" id="histTiles"></div>
+    <div class="table-scroll">
+      <table class="table" id="histTable">
+        <caption class="sr-only">Jornadas registradas</caption>
+        <thead><tr>
+          <th scope="col">Data</th><th scope="col">Período</th>
+          <th scope="col" class="num">Receita</th><th scope="col" class="num">Custos</th>
+          <th scope="col" class="num">Lucro</th><th scope="col" class="num">R$/h</th><th scope="col"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="hint" id="histEmpty">Nenhuma jornada salva ainda. Calcule uma jornada e toque em <b>Salvar no histórico</b>.</p>
+  </div>
+</section>
+
+<footer class="foot">
+  <p>Os dados ficam apenas neste navegador — nada é enviado para a internet. Os valores de exemplo são estimativas: ajuste tudo na aba <b>Meu carro</b> para a sua realidade.</p>
+</footer>
+
+</main>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<script src="assets/app.js"></script>
+</body>
+</html>
