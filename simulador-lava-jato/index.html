@@ -116,7 +116,28 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: 
   font: 600 .75rem/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase;
 }
 
-.feito { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); display: grid; gap: .375rem; justify-items: center; pointer-events: none; }
+/* peça sob a mira — no alto, como no jogo que inspirou */
+.mirada {
+  /* abaixo da faixa de mostradores: no topo ele se sobrepunha a eles */
+  position: absolute; left: 50%; top: 4.25rem; transform: translateX(-50%);
+  display: flex; align-items: center; gap: .5rem; max-width: calc(100% - 1.25rem);
+  background: rgba(11,14,17,.82); backdrop-filter: blur(6px);
+  border: 1px solid var(--borda); border-radius: 999px;
+  padding: .3125rem .75rem; pointer-events: none;
+}
+.mirada[hidden] { display: none; }
+.mirada span {
+  font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--giz); white-space: nowrap;
+}
+.mirada__barra { width: 4.5rem; height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; flex: none; }
+.mirada__barra i { display: block; height: 100%; width: 0%; background: var(--agua); transition: width .12s linear; }
+.mirada b { font: 700 .6875rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--agua); }
+.mirada.pronta span { color: #7fe3ac; }
+.mirada.pronta b { color: var(--ok); }
+.mirada.pronta .mirada__barra i { background: var(--ok); }
+
+.feito { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); display: grid; gap: .375rem; justify-items: center; pointer-events: none; }
 .feito b {
   background: rgba(53,196,122,.16); border: 1px solid var(--ok); color: #7fe3ac;
   border-radius: 999px; padding: .375rem .875rem; white-space: nowrap;
@@ -232,6 +253,12 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: 
       <button type="button" class="orb orb--e"  id="orbEsq"   aria-label="Girar para a esquerda">◀</button>
       <button type="button" class="orb orb--c"  id="orbBaixo" aria-label="Olhar de baixo">▼</button>
       <button type="button" class="orb orb--d"  id="orbDir"   aria-label="Girar para a direita">▶</button>
+    </div>
+
+    <div class="mirada" id="mirada" hidden>
+      <span id="miradaNome">—</span>
+      <div class="mirada__barra"><i id="miradaBarra"></i></div>
+      <b id="miradaPct">0%</b>
     </div>
 
     <div class="aviso" id="aviso">Bico 0° perto demais — descascando a tinta</div>
@@ -762,8 +789,13 @@ function raioDoPonteiro(px, py) {
   return { o: olho, d: [d[0]/L, d[1]/L, d[2]/L] };
 }
 
+// Além do ponto, guarda qual peça está sob a mira: é o que orienta o jogador
+// em 3D, onde as peças não têm contorno visível.
+let parteMirada = 0;
+
 function intersectar(ro, rd) {
   let melhor = Infinity, ponto = null;
+  parteMirada = 0;
   for (let t = 0; t < IDX.length; t += 3) {
     const i0 = IDX[t] * 3, i1 = IDX[t+1] * 3, i2 = IDX[t+2] * 3;
     const ax = VP[i0], ay = VP[i0+1], az = VP[i0+2];
@@ -783,6 +815,7 @@ function intersectar(ro, rd) {
     if (dd > .02 && dd < melhor) {
       melhor = dd;
       ponto = [ro[0]+rd[0]*dd, ro[1]+rd[1]*dd, ro[2]+rd[2]*dd];
+      parteMirada = VPA[IDX[t]];
     }
   }
   return ponto;
@@ -1069,6 +1102,7 @@ function laco(agora) {
   jatoEParticulas();
 
   ajustaSom();
+  atualizaMirada();
   document.getElementById('aviso').classList.toggle('on', riscoAtivo);
   requestAnimationFrame(laco);
 }
@@ -1093,6 +1127,28 @@ function atualizaHud() {
     el.barra.style.width = `${pctPeca[p]*100}%`;
     el.pct.textContent = `${Math.floor(pctPeca[p]*100)}%`;
   }
+}
+
+const elMirada = document.getElementById('mirada');
+const elMiradaNome = document.getElementById('miradaNome');
+const elMiradaBarra = document.getElementById('miradaBarra');
+const elMiradaPct = document.getElementById('miradaPct');
+let miradaAnt = -1, miradaPctAnt = -1;
+
+/** Mostra a peça sob a mira e o quanto falta nela. Só toca no DOM se mudou. */
+function atualizaMirada() {
+  if (!parteMirada || terminado) {
+    if (!elMirada.hidden) { elMirada.hidden = true; miradaAnt = -1; }
+    return;
+  }
+  const pct = Math.floor(pctPeca[parteMirada] * 100);
+  if (parteMirada === miradaAnt && pct === miradaPctAnt) return;
+  miradaAnt = parteMirada; miradaPctAnt = pct;
+  elMirada.hidden = false;
+  elMiradaNome.textContent = PARTES[parteMirada - 1];
+  elMiradaBarra.style.width = `${pctPeca[parteMirada] * 100}%`;
+  elMiradaPct.textContent = `${pct}%`;
+  elMirada.classList.toggle('pronta', !!prontaPeca[parteMirada]);
 }
 
 function anunciaPeca(p) {
