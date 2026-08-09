@@ -689,6 +689,7 @@ void main() {
   float grao = smoothstep(0.62, 0.95, g) * vSuj;
 
   vec3 corSujeira = mix(vec3(0.19, 0.145, 0.09), vec3(0.075, 0.055, 0.035), grao);
+  corSujeira *= 1.0 - vMol * 0.5;        // barro molhado escurece antes de sair
   vec3 cor = mix(base, corSujeira, suj);
 
   // sujeira é fosca; limpo e molhado brilham
@@ -699,10 +700,34 @@ void main() {
   vec3 L2 = normalize(vec3(0.7, 0.25, -0.6));
   float dif = max(dot(N, L1), 0.0) * 0.62 + max(dot(N, L2), 0.0) * 0.20;
   float amb = 0.20 + 0.12 * (N.y * 0.5 + 0.5);
-  vec3 H = normalize(L1 + Vd);
-  float sp = pow(max(dot(N, H), 0.0), brilho) * espec;
   float borda = pow(1.0 - max(dot(N, Vd), 0.0), 3.0) * 0.16;
 
+  // Vincos de painel. Sem porta, capô e tampa marcados a carroceria é uma
+  // superfície contínua e lê como bloco. Só na pintura, e cada vinco só na
+  // face onde ele existe de verdade: porta na lateral, capô e tampa em cima.
+  float vinco = 0.0;
+  if (vMat < 0.5) {
+    // a porta começa acima da soleira e morre na cintura: sem essa janela
+    // vertical o vinco viraria uma linha de régua cortando caixa de roda
+    float faixa = smoothstep(0.44, 0.56, vPos.y) * (1.0 - smoothstep(1.00, 1.14, vPos.y));
+    float lat = smoothstep(0.30, 0.62, abs(N.x)) * faixa;
+    float topo = smoothstep(0.35, 0.70, N.y);
+    vinco = max(vinco, lat * smoothstep(0.030, 0.0, abs(vPos.z - 0.86)));   // coluna dianteira
+    vinco = max(vinco, lat * smoothstep(0.030, 0.0, abs(vPos.z + 0.28)));   // porta
+    vinco = max(vinco, lat * smoothstep(0.030, 0.0, abs(vPos.z + 1.32)));   // para-lama traseiro
+    vinco = max(vinco, topo * smoothstep(0.034, 0.0, abs(vPos.z - 1.02)));  // capô
+    vinco = max(vinco, topo * smoothstep(0.034, 0.0, abs(vPos.z + 1.18)));  // tampa
+    // friso lateral corrido, na altura da maçaneta
+    vinco = max(vinco, smoothstep(0.30, 0.62, abs(N.x))
+                     * smoothstep(0.022, 0.0, abs(vPos.y - 0.86))
+                     * step(abs(vPos.z), 1.75) * 0.55);
+    vinco *= 1.0 - suj * 0.55;            // sob crosta o vinco some
+  }
+  cor *= 1.0 - vinco * 0.62;
+  espec *= 1.0 - vinco * 0.8;          // o vinco é fosco: precisa entrar antes do brilho
+
+  vec3 H = normalize(L1 + Vd);
+  float sp = pow(max(dot(N, H), 0.0), brilho) * espec;
   vec3 saida = cor * (amb + dif) + vec3(sp) + vec3(0.35, 0.45, 0.55) * borda;
   saida += vec3(0.30, 0.75, 0.92) * uDica * suj * 0.55;   // pulso do "onde falta"
   ${POR} = vec4(pow(clamp(saida, 0.0, 1.0), vec3(0.4545)), 1.0);
@@ -849,6 +874,20 @@ let totalInicial = 1;
 // trigonometria por texel travava o botão de "sujar de novo".
 const RN = 128;
 const grade = new Float32Array(RN * RN);
+
+// Segunda grade, bem mais fina, só para a DUREZA. É ela que faz a sujeira
+// soltar em placas em vez de desbotar por igual: onde a aderência é baixa a
+// crosta cede logo, onde é alta ela resiste e a borda vai ficando irregular.
+const RN2 = 256, CEL = 5;                  // ~1,4 cm por célula
+const grade2 = new Float32Array(RN2 * RN2);
+function amostraFina(x, y) {
+  const gx = (x / CEL) % RN2, gy = (y / CEL) % RN2;
+  const x0 = gx | 0, y0 = gy | 0, tx = gx - x0, ty = gy - y0;
+  const x1 = (x0 + 1) % RN2, y1 = (y0 + 1) % RN2;
+  const a = grade2[y0*RN2+x0] + (grade2[y0*RN2+x1] - grade2[y0*RN2+x0]) * tx;
+  const b = grade2[y1*RN2+x0] + (grade2[y1*RN2+x1] - grade2[y1*RN2+x0]) * tx;
+  return a + (b - a) * ty;
+}
 function amostraRuido(fx, fy) {
   const gx = fx * (RN - 1), gy = fy * (RN - 1);
   const x0 = gx | 0, y0 = gy | 0, tx = gx - x0, ty = gy - y0;
@@ -860,6 +899,7 @@ function amostraRuido(fx, fy) {
 
 function sujar() {
   for (let i = 0; i < grade.length; i++) grade[i] = Math.random();
+  for (let i = 0; i < grade2.length; i++) grade2[i] = Math.random();
   somaPeca.fill(0); somaInicial.fill(0); totalInicial = 0;
 
   for (let i = 0; i < TEX2; i++) {
@@ -867,10 +907,13 @@ function sujar() {
     if (!(m & 128)) { sujBuf[i] = 0; durBuf[i] = 0; continue; }
     const y = altura[i] / 255 * 1.7;
     const baixo = clamp(1 - (y - .3) / 1.2, 0, 1);
-    const n = amostraRuido((i % TEX) / TEX, ((i / TEX) | 0) / TEX);
+    const tx = i % TEX, ty = (i / TEX) | 0;
+    const n = amostraRuido(tx / TEX, ty / TEX);
     const s = clamp(.58 + baixo * .34 + n * .28, 0, 1) * 255;
     sujBuf[i] = s | 0;
-    durBuf[i] = (clamp(.05 + baixo * .46 + (n > .74 ? .3 : 0), 0, .92) * 255) | 0;
+    // a dureza é dominada pela grade fina: é o que quebra a mancha em placas
+    const f = amostraFina(tx, ty);
+    durBuf[i] = (clamp(.02 + baixo * .30 + n * .12 + f * f * .58, 0, .96) * 255) | 0;
     const p = M_PARTE(m);
     somaPeca[p] += sujBuf[i];
     somaInicial[p] += sujBuf[i];
