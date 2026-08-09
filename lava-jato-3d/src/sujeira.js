@@ -103,7 +103,7 @@ export class Sujeira {
       parte[i] = id;
       // mais sujo embaixo, com variação para não sair uniforme
       const ruido = Math.abs(Math.sin(p.x * 91.7 + p.z * 57.3) * Math.cos(p.y * 73.1));
-      suj[i] = Math.min(1, 0.55 + (1 - v) * 0.35 + ruido * 0.22);
+      suj[i] = Math.min(1, 0.72 + (1 - v) * 0.26 + ruido * 0.18);
       this.somaPeca[id] += suj[i];
     }
 
@@ -141,12 +141,23 @@ export class Sujeira {
                          mix(mix(hsh(i+vec3(0,0,1)),hsh(i+vec3(1,0,1)),f.x),mix(hsh(i+vec3(0,1,1)),hsh(i+vec3(1,1,1)),f.x),f.y),f.z); }`)
           .replace('#include <map_fragment>', `#include <map_fragment>
             float g = rud(vMundo*260.0)*0.62 + rud(vMundo*840.0)*0.38;
-            float suj = clamp(vSuj*(0.42+1.15*g), 0.0, 1.0);
-            vec3 corSuj = mix(vec3(0.20,0.155,0.10), vec3(0.075,0.055,0.035),
-                              smoothstep(0.62,0.95,g)*vSuj);
+            float suj = clamp(vSuj*(0.55+1.05*g), 0.0, 1.0);
+            vec3 corSuj = mix(vec3(0.155,0.115,0.070), vec3(0.055,0.040,0.026),
+                              smoothstep(0.60,0.95,g)*vSuj);
             diffuseColor.rgb = mix(diffuseColor.rgb, corSuj, suj);`)
-          .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-            roughnessFactor = mix(roughnessFactor, 0.92, clamp(vSuj*1.2, 0.0, 1.0));`);
+          // Aqui é o ponto que importa: a struct `material` já existe e é ela
+          // que a iluminação usa. Tingir só o diffuseColor não bastava — a
+          // pintura do modelo é metálica, e metal multiplica o difuso por
+          // (1 - metalness), então a sujeira ia embora justamente onde o carro
+          // é mais bonito. O verniz por cima lavava o resto.
+          .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+            material.diffuseColor = mix(material.diffuseColor, corSuj, suj);
+            material.roughness = clamp(mix(material.roughness, 0.95, suj), 0.04, 1.0);
+            material.specularColor = mix(material.specularColor, vec3(0.04), suj);
+            #ifdef USE_CLEARCOAT
+              material.clearcoat = mix(material.clearcoat, 0.0, suj);
+              material.clearcoatRoughness = mix(material.clearcoatRoughness, 0.9, suj);
+            #endif`);
       };
       // sem isso o three reaproveita o programa sem a injeção
       m.customProgramCacheKey = () => 'lavajato-sujeira';
