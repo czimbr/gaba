@@ -14,6 +14,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { Sujeira, PARTES } from './sujeira.js';
+import { BICOS, montarPainel, atualizarPainel } from './ui.js';
 
 const app = document.getElementById('app');
 
@@ -65,8 +67,8 @@ cena.add(chao);
 
 /* ── modelo ── */
 const aviso = document.getElementById('aviso');
-let carro = null;
-const pecas = [];   // malhas candidatas a virar tarefa da lista
+let carro = null, sujeira = null;
+const pecas = [];
 
 // caminho relativo ao base: em Pages de projeto o site não fica na raiz
 new GLTFLoader().load(
@@ -109,9 +111,13 @@ new GLTFLoader().load(
     s.near = 0.01; s.far = raio * 12; s.updateProjectionMatrix();
     chao.scale.setScalar(raio * 4);
 
+    sujeira = new Sujeira(carro, new THREE.Box3().setFromObject(carro));
+    montarPainel(sujeira);
+    atualizarPainel(sujeira);
+
     document.getElementById('mTris').textContent = Math.round(tris).toLocaleString('pt-BR');
     document.getElementById('mVerts').textContent = verts.toLocaleString('pt-BR');
-    document.getElementById('mPecas').textContent = String(pecas.length);
+    document.getElementById('mPecas').textContent = String(sujeira.ativas.length);
     aviso.style.display = 'none';
     window.__pronto = true;
   },
@@ -126,15 +132,62 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
+/* ── jato ── */
+const raio = new THREE.Raycaster();
+const ponteiro = new THREE.Vector2();
+let jatoAtivo = false, temMira = false, acumulado = 0;
+
+const paraNDC = (e) => {
+  ponteiro.x = (e.clientX / innerWidth) * 2 - 1;
+  ponteiro.y = -(e.clientY / innerHeight) * 2 + 1;
+  temMira = true;
+};
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;             // botão direito fica com a órbita
+  paraNDC(e); jatoAtivo = true;
+  orbita.enabled = false;                  // não gira enquanto lava
+});
+renderer.domElement.addEventListener('pointermove', paraNDC);
+const soltar = () => { jatoAtivo = false; orbita.enabled = true; };
+addEventListener('pointerup', soltar);
+addEventListener('pointercancel', soltar);
+
+let ultimo = performance.now();
+
 renderer.setAnimationLoop(() => {
+  const agora = performance.now();
+  const dt = Math.min(0.05, (agora - ultimo) / 1000);
+  ultimo = agora;
+
+  if (sujeira && jatoAtivo && temMira) {
+    raio.setFromCamera(ponteiro, camera);
+    const hits = raio.intersectObject(carro, true);
+    if (hits.length) {
+      sujeira.jato(hits[0].point, raio.ray.direction, BICOS[window.__bico ?? 2], dt);
+      acumulado += dt;
+      if (acumulado > 0.15) {
+        acumulado = 0;
+        sujeira.apurar();
+        atualizarPainel(sujeira);
+      }
+    }
+  }
+
   orbita.update();
   renderer.render(cena, camera);
 });
 
 window.__diag = () => ({
   pronto: !!window.__pronto,
-  pecas: pecas.length,
-  nomes: pecas.slice(0, 12).map((m) => m.name),
-  materiais: [...new Set(pecas.map((m) => m.material?.type))],
-  gl: renderer.getContext().getParameter(renderer.getContext().VERSION)
+  malhas: pecas.map((m) => m.name),
+  contagem: sujeira ? sujeira.contagem() : null,
+  pct: sujeira ? +(sujeira.pctTotal * 100).toFixed(1) : null,
+  pecas: sujeira ? PARTES.map((n, i) => `${n}=${Math.round(sujeira.pctPeca[i+1]*100)}%`) : null
 });
+window.__lavar = (v) => {                 // gancho de teste
+  for (const m of sujeira.malhas) {
+    for (let i = 0; i < m.suj.length; i++) { sujeira.somaPeca[m.parte[i]] -= m.suj[i] - v; m.suj[i] = v; }
+    m.attr.needsUpdate = true;
+  }
+  sujeira.apurar(); atualizarPainel(sujeira);
+};

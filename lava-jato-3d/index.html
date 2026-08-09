@@ -25,6 +25,27 @@
   .linha b { color:var(--agua); font-variant-numeric:tabular-nums; }
   .aviso { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
            font:500 .75rem/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--concreto); }
+  .jogo { position:fixed; right:1rem; top:1rem; width:15rem; display:grid; gap:.625rem; }
+  .bicos { display:flex; gap:.25rem; }
+  .bico { flex:1; cursor:pointer; padding:.375rem .125rem .3125rem; border-radius:8px;
+          background:rgba(31,36,41,.9); border:1px solid rgba(255,255,255,.09); color:var(--concreto);
+          display:grid; gap:.25rem; justify-items:center; font:inherit; }
+  .bico i { display:block; width:100%; height:6px; border-radius:2px; background:var(--cor); }
+  .bico b { font:700 .625rem/1 var(--mono); }
+  .bico[aria-pressed="true"] { border-color:var(--cor); color:var(--giz); background:rgba(57,66,75,.95); }
+  .lista { background:rgba(11,14,17,.82); backdrop-filter:blur(8px);
+           border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:.625rem .75rem; }
+  .lista__topo { display:flex; justify-content:space-between; margin-bottom:.5rem;
+                 font:500 .5625rem/1 var(--mono); letter-spacing:.13em; text-transform:uppercase; color:var(--concreto); }
+  .lista__topo b { color:var(--agua); }
+  .peca { display:grid; grid-template-columns:1fr auto; gap:.125rem .5rem; margin-bottom:.4375rem; }
+  .peca span { font-size:.75rem; color:var(--giz); }
+  .peca b { font:600 .625rem/1.4 var(--mono); color:var(--concreto); font-variant-numeric:tabular-nums; }
+  .peca i { grid-column:1/-1; height:2px; border-radius:1px; background:rgba(255,255,255,.12); }
+  .peca i s { display:block; height:100%; width:0%; background:var(--agua); }
+  .peca.pronta b { color:#35c47a; }
+  .peca.pronta i s { background:#35c47a; }
+  .peca.pronta span::after { content:" ✓"; color:#35c47a; }
   .rodape { position:fixed; left:1rem; bottom:1rem; font:500 .625rem/1.5 var(--mono); color:#4d545a; max-width:24rem; }
 </style>
 </head>
@@ -35,8 +56,10 @@
     <p>Modelo real · PBR · reflexo de ambiente</p>
     <div class="linha"><span>Malha</span><b id="mTris">—</b></div>
     <div class="linha"><span>Vértices</span><b id="mVerts">—</b></div>
-    <div class="linha"><span>Peças no modelo</span><b id="mPecas">—</b></div>
+    <div class="linha"><span>Peças</span><b id="mPecas">—</b></div>
+    <div class="linha"><span>Limpo</span><b id="mLimpo">0%</b></div>
   </div>
+  <div class="jogo" id="jogo"></div>
   <div class="aviso" id="aviso">Carregando modelo…</div>
   <p class="rodape">Modelo “Toy Car” do Khronos Group, CC0 1.0. Ambiente gerado por código (RoomEnvironment), sem asset externo.</p>
   <script type="module" src="/src/main.js"></script>
