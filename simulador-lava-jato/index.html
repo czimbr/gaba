@@ -1,4 +1,4 @@
-<title>Lava-Jato — Simulador de Máquina de Pressão</title>
+<title>Lava-Jato 3D — Simulador de Máquina de Pressão</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <style>
@@ -12,30 +12,24 @@
   --agua:     #4cc4e8;
   --alerta:   #e5484d;
   --ok:       #35c47a;
-
   --borda: rgba(255,255,255,.09);
   --r: 14px;
-
   --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
-
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-
 body {
-  background: var(--grafite);
-  color: var(--giz);
-  font: 400 16px/1.5 var(--ui);
-  -webkit-text-size-adjust: 100%;
+  background: var(--grafite); color: var(--giz);
+  font: 400 16px/1.5 var(--ui); -webkit-text-size-adjust: 100%;
   padding: clamp(.75rem, 2vw, 1.5rem);
 }
-
-/* grid, não flex coluna: como item de flex os filhos encolhiam e
-   esmagavam o visor bem abaixo da altura do próprio canvas */
 .maq { width: 100%; max-width: 1040px; margin: 0 auto; display: grid; gap: .875rem; }
 
-/* ─────────── cabeçalho ─────────── */
+h1, h2 { margin: 0; line-height: 1.2; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* topo */
 .topo { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .marca { display: flex; align-items: center; gap: .75rem; }
 .marca__selo {
@@ -44,111 +38,117 @@ body {
   display: grid; place-items: center; font: 700 1.375rem/1 var(--ui);
   box-shadow: inset 0 -3px 0 rgba(0,0,0,.22);
 }
-.marca h1 { margin: 0; font: 700 1.25rem/1.1 var(--ui); letter-spacing: -.025em; }
+.marca h1 { font: 700 1.25rem/1.1 var(--ui); letter-spacing: -.025em; }
 .marca p {
   margin: .1875rem 0 0; font: 500 .6875rem/1 var(--mono);
   letter-spacing: .14em; text-transform: uppercase; color: var(--concreto);
 }
+.acoes { display: flex; gap: .375rem; flex-wrap: wrap; }
+.btn {
+  cursor: pointer; border-radius: 9px; padding: .5rem .8125rem;
+  background: var(--aco-alto); border: 1px solid var(--borda); color: var(--giz);
+  font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+}
+.btn:hover { background: #39424b; }
+.btn--forte { background: var(--maquina); border-color: var(--maquina); color: var(--grafite); }
+.btn--forte:hover { background: #ffd534; }
+.btn:focus-visible, .bico:focus-visible, .cor:focus-visible, .orb:focus-visible,
+input:focus-visible { outline: 2px solid var(--maquina); outline-offset: 2px; }
 
-/* ─────────── visor ─────────── */
+/* visor */
 .visor {
   position: relative; border-radius: var(--r); overflow: hidden;
-  background: #0e1114; border: 1px solid var(--borda);
+  background: #0b0e11; border: 1px solid var(--borda);
   box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -24px #000;
+  aspect-ratio: 16 / 10;
 }
-canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+@media (max-width: 560px) { .visor { aspect-ratio: 4 / 3; } }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 
 .hud {
   position: absolute; inset: .625rem .625rem auto; display: flex; gap: .5rem;
-  justify-content: space-between; align-items: flex-start; pointer-events: none;
+  justify-content: space-between; align-items: flex-start; pointer-events: none; flex-wrap: wrap;
 }
 .leitura {
-  background: rgba(14,17,20,.82); backdrop-filter: blur(6px);
+  background: rgba(11,14,17,.82); backdrop-filter: blur(6px);
   border: 1px solid var(--borda); border-radius: 9px;
   padding: .375rem .625rem; display: flex; flex-direction: column; gap: .125rem;
 }
-.leitura span {
-  font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
-  text-transform: uppercase; color: var(--concreto);
-}
-.leitura b { font: 700 1.0625rem/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.leitura span { font: 500 .5625rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--concreto); }
+.leitura b { font: 700 1.0625rem/1 var(--mono); font-variant-numeric: tabular-nums; }
 .leitura b.agua { color: var(--agua); }
-.leitura b.risco { color: var(--alerta); }
-
 .barra { height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); margin-top: .3125rem; overflow: hidden; }
 .barra i { display: block; height: 100%; background: var(--agua); width: 0%; transition: width .2s linear; }
+
+/* controles de órbita sobre o visor */
+.orbita {
+  position: absolute; right: .625rem; bottom: .625rem;
+  display: grid; grid-template-columns: repeat(3, 2.25rem); grid-template-rows: repeat(2, 2.25rem);
+  gap: .25rem;
+}
+.orb {
+  border: 1px solid var(--borda); background: rgba(11,14,17,.8); backdrop-filter: blur(6px);
+  color: var(--giz); border-radius: 8px; cursor: pointer; font: 600 .875rem/1 var(--ui);
+  display: grid; place-items: center; padding: 0;
+}
+.orb:hover { background: rgba(42,49,56,.92); }
+.orb--e { grid-area: 2 / 1; } .orb--c { grid-area: 2 / 2; } .orb--d { grid-area: 2 / 3; }
+.orb--u { grid-area: 1 / 2; } .orb--z1 { grid-area: 1 / 1; } .orb--z2 { grid-area: 1 / 3; }
 
 .aviso {
   position: absolute; left: 50%; transform: translateX(-50%); bottom: .75rem;
   display: flex; align-items: center; gap: .4375rem;
-  background: rgba(229,72,77,.14); border: 1px solid var(--alerta);
-  color: #ff9b9e; border-radius: 999px; padding: .3125rem .75rem;
+  background: rgba(229,72,77,.14); border: 1px solid var(--alerta); color: #ff9b9e;
+  border-radius: 999px; padding: .3125rem .75rem;
   font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
   pointer-events: none; opacity: 0; transition: opacity .16s;
 }
 .aviso.on { opacity: 1; }
 .aviso::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--alerta); }
 
-/* dica de partida */
 .partida {
   position: absolute; inset: 0; display: grid; place-items: center;
-  background: rgba(14,17,20,.55); backdrop-filter: blur(2px);
-  font: 600 .8125rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
-  color: var(--giz); text-align: center; padding: 1rem; pointer-events: none;
+  background: rgba(11,14,17,.5); backdrop-filter: blur(2px); pointer-events: none; padding: 1rem;
 }
-.partida span { display: block; border: 1px solid var(--borda); border-radius: 999px; padding: .625rem 1.125rem; background: rgba(20,23,26,.9); }
+.partida span {
+  border: 1px solid var(--borda); border-radius: 999px; padding: .625rem 1.125rem;
+  background: rgba(20,23,26,.92); text-align: center;
+  font: 600 .75rem/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+}
 
-/* fim */
-.fim {
-  position: absolute; inset: 0; display: none; place-items: center;
-  background: rgba(14,17,20,.86); backdrop-filter: blur(4px); padding: 1rem;
-}
-.fim.on { display: grid; }
-.fim__cx { text-align: center; max-width: 22rem; }
-.fim__cx h2 { margin: 0 0 .25rem; font: 700 1.5rem/1.1 var(--ui); letter-spacing: -.02em; }
-.fim__cx p { margin: 0; color: var(--concreto); font-size: .875rem; }
-.placar { display: flex; gap: .5rem; justify-content: center; margin: 1rem 0 1.25rem; }
-.placar div {
-  background: var(--aco); border: 1px solid var(--borda); border-radius: 10px;
-  padding: .5rem .75rem; min-width: 5.25rem;
-}
-.placar span { display: block; font: 500 .5625rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--concreto); margin-bottom: .25rem; }
-.placar b { font: 700 1.125rem/1 var(--mono); font-variant-numeric: tabular-nums; }
-
-/* aviso flutuante de peça concluída */
-.feito {
-  position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: .375rem;
-  pointer-events: none;
-}
+.feito { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); display: grid; gap: .375rem; justify-items: center; pointer-events: none; }
 .feito b {
   background: rgba(53,196,122,.16); border: 1px solid var(--ok); color: #7fe3ac;
-  border-radius: 999px; padding: .375rem .875rem;
+  border-radius: 999px; padding: .375rem .875rem; white-space: nowrap;
   font: 600 .75rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
-  white-space: nowrap;
   animation: sobe 1.6s ease-out forwards;
 }
 @keyframes sobe {
-  0%   { opacity: 0; transform: translateY(10px) scale(.94); }
-  16%  { opacity: 1; transform: translateY(0) scale(1); }
-  74%  { opacity: 1; }
+  0% { opacity: 0; transform: translateY(10px) scale(.94); }
+  16% { opacity: 1; transform: none; } 74% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-26px); }
 }
-@media (prefers-reduced-motion: reduce) { .feito b { animation: none; opacity: 1; } }
 
-/* ─────────── lista de peças ─────────── */
-.lista {
-  background: var(--aco); border: 1px solid var(--borda);
-  border-radius: var(--r); padding: .875rem;
+.fim { position: absolute; inset: 0; display: none; place-items: center; background: rgba(11,14,17,.88); backdrop-filter: blur(4px); padding: 1rem; }
+.fim.on { display: grid; }
+.fim__cx { text-align: center; max-width: 22rem; }
+.fim__cx h2 { font: 700 1.5rem/1.1 var(--ui); letter-spacing: -.02em; margin-bottom: .25rem; }
+.fim__cx p { margin: 0; color: var(--concreto); font-size: .875rem; }
+.placar { display: flex; gap: .5rem; justify-content: center; margin: 1rem 0 1.25rem; flex-wrap: wrap; }
+.placar div { background: var(--aco); border: 1px solid var(--borda); border-radius: 10px; padding: .5rem .75rem; min-width: 5.25rem; }
+.placar span { display: block; font: 500 .5625rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--concreto); margin-bottom: .25rem; }
+.placar b { font: 700 1.125rem/1 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* lista de peças */
+.lista, .painel, .manual {
+  background: var(--aco); border: 1px solid var(--borda); border-radius: var(--r); padding: .875rem;
 }
 .lista__topo { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .625rem; }
-.lista h2, .lista__cont {
-  margin: 0; font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
-  text-transform: uppercase; color: var(--concreto);
+.lista h2, .lista__cont, .rotulo {
+  font: 500 .5625rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--concreto);
 }
 .lista__cont { color: var(--agua); font-variant-numeric: tabular-nums; }
-
-.pecas { display: grid; gap: .375rem; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+.pecas { display: grid; gap: .375rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .peca {
   background: var(--aco-alto); border: 1px solid var(--borda); border-radius: 9px;
   padding: .4375rem .5625rem; display: grid; gap: .3125rem;
@@ -163,92 +163,47 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
 .peca.pronta .peca__barra i { background: var(--ok); }
 .peca.pronta .peca__nome::after { content: " ✓"; color: var(--ok); }
 
-/* ─────────── painel ─────────── */
-.painel {
-  background: var(--aco); border: 1px solid var(--borda); border-radius: var(--r);
-  padding: .875rem; display: grid; gap: .875rem;
-  grid-template-columns: 1fr;
-}
+/* painel */
+.painel { display: grid; gap: .875rem; grid-template-columns: 1fr; }
 @media (min-width: 720px) { .painel { grid-template-columns: 1.35fr 1fr; } }
-
 .bloco { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
-.rotulo {
-  font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
-  text-transform: uppercase; color: var(--concreto);
-}
-
-/* bicos */
 .bicos { display: flex; gap: .375rem; }
 .bico {
   flex: 1 1 0; min-width: 0; cursor: pointer; border-radius: 10px; padding: .5rem .25rem .4375rem;
   background: var(--aco-alto); border: 1px solid var(--borda);
   display: flex; flex-direction: column; align-items: center; gap: .3125rem;
-  font: inherit; color: var(--concreto); transition: background .12s, border-color .12s, color .12s;
+  font: inherit; color: var(--concreto);
 }
 .bico:hover { background: #333b43; color: var(--giz); }
-.bico__tip {
-  width: 100%; height: 9px; border-radius: 3px; background: var(--cor);
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,.28);
-}
-.bico b { font: 700 .75rem/1 var(--mono); letter-spacing: -.01em; }
+.bico__tip { width: 100%; height: 9px; border-radius: 3px; background: var(--cor); box-shadow: inset 0 -2px 0 rgba(0,0,0,.28); }
+.bico b { font: 700 .75rem/1 var(--mono); }
 .bico small { font: 500 .5rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .bico[aria-pressed="true"] { background: #39424b; border-color: var(--cor); color: var(--giz); }
-.bico:focus-visible, .btn:focus-visible, .cor:focus-visible { outline: 2px solid var(--maquina); outline-offset: 2px; }
-
-/* distância */
 .dist { display: flex; align-items: center; gap: .625rem; }
 .dist input { flex: 1; accent-color: var(--maquina); height: 1.5rem; }
-.dist b {
-  font: 700 .8125rem/1 var(--mono); font-variant-numeric: tabular-nums;
-  min-width: 3.25rem; text-align: right; color: var(--maquina);
-}
-
-/* pintura */
+.dist b { font: 700 .8125rem/1 var(--mono); font-variant-numeric: tabular-nums; min-width: 3.25rem; text-align: right; color: var(--maquina); }
 .cores { display: flex; gap: .375rem; }
-.cor {
-  width: 2rem; height: 2rem; border-radius: 50%; cursor: pointer; flex: none;
-  border: 2px solid transparent; background: var(--cor); padding: 0;
-  box-shadow: inset 0 -3px 6px rgba(0,0,0,.35);
-}
+.cor { width: 2rem; height: 2rem; border-radius: 50%; cursor: pointer; flex: none; border: 2px solid transparent; background: var(--cor); padding: 0; box-shadow: inset 0 -3px 6px rgba(0,0,0,.35); }
 .cor[aria-pressed="true"] { border-color: var(--giz); }
 
-/* botões */
-.acoes { display: flex; gap: .375rem; flex-wrap: wrap; }
-.btn {
-  cursor: pointer; border-radius: 9px; padding: .5rem .8125rem;
-  background: var(--aco-alto); border: 1px solid var(--borda); color: var(--giz);
-  font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
-}
-.btn:hover { background: #39424b; }
-.btn--forte { background: var(--maquina); border-color: var(--maquina); color: var(--grafite); }
-.btn--forte:hover { background: #ffd534; }
-
-/* ─────────── manual ─────────── */
-.manual {
-  border: 1px solid var(--borda); border-radius: var(--r); padding: .875rem 1rem;
-  background: rgba(31,36,41,.5);
-}
-.manual h2 { margin: 0 0 .5rem; font: 500 .5625rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--concreto); }
+.manual h2 { margin-bottom: .5rem; font: 500 .5625rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--concreto); }
 .manual ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .375rem; }
 @media (min-width: 640px) { .manual ul { grid-template-columns: 1fr 1fr; gap: .375rem 1.5rem; } }
 .manual li { display: flex; gap: .5rem; align-items: baseline; font-size: .8125rem; color: var(--concreto); }
 .manual li i { width: 8px; height: 8px; border-radius: 2px; flex: none; background: var(--cor); transform: translateY(-1px); }
 .manual li b { color: var(--giz); font-weight: 600; }
-
 .rodape { font-size: .75rem; color: var(--concreto); text-align: center; }
+.erro { background: rgba(229,72,77,.12); border: 1px solid var(--alerta); color: #ff9b9e; border-radius: var(--r); padding: 1rem; font-size: .875rem; }
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
-}
+@media (prefers-reduced-motion: reduce) { *, .feito b { animation: none !important; transition: none !important; } }
 </style>
 
 <div class="maq">
-
   <header class="topo">
     <div class="marca">
       <div class="marca__selo" aria-hidden="true">◤</div>
       <div>
-        <h1>Lava-Jato</h1>
+        <h1>Lava-Jato 3D</h1>
         <p>Simulador de máquina de pressão</p>
       </div>
     </div>
@@ -261,41 +216,36 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   </header>
 
   <div class="visor">
-    <canvas id="cv" width="1000" height="620" aria-label="Carro sujo para lavar com máquina de pressão"></canvas>
+    <canvas id="cv" aria-label="Carro em 3D coberto de sujeira, para lavar com máquina de pressão"></canvas>
 
     <div class="hud">
-      <div class="leitura">
-        <span>Limpo</span>
-        <b class="agua" id="lePct">0%</b>
-        <div class="barra"><i id="leBarra"></i></div>
-      </div>
-      <div class="leitura">
-        <span>Pressão</span>
-        <b id="lePsi">0</b>
-      </div>
-      <div class="leitura">
-        <span>Tempo</span>
-        <b id="leTempo">0:00</b>
-      </div>
-      <div class="leitura">
-        <span>Peças</span>
-        <b id="lePecas">0/8</b>
-      </div>
+      <div class="leitura"><span>Limpo</span><b class="agua" id="lePct">0%</b><div class="barra"><i id="leBarra"></i></div></div>
+      <div class="leitura"><span>Pressão</span><b id="lePsi">0</b></div>
+      <div class="leitura"><span>Tempo</span><b id="leTempo">0:00</b></div>
+      <div class="leitura"><span>Peças</span><b id="lePecas">0/11</b></div>
     </div>
 
-    <div class="feito" id="feito" aria-live="polite"></div>
+    <div class="orbita">
+      <button type="button" class="orb orb--z1" id="orbMais"  aria-label="Aproximar">+</button>
+      <button type="button" class="orb orb--u"  id="orbCima"  aria-label="Olhar de cima">▲</button>
+      <button type="button" class="orb orb--z2" id="orbMenos" aria-label="Afastar">−</button>
+      <button type="button" class="orb orb--e"  id="orbEsq"   aria-label="Girar para a esquerda">◀</button>
+      <button type="button" class="orb orb--c"  id="orbBaixo" aria-label="Olhar de baixo">▼</button>
+      <button type="button" class="orb orb--d"  id="orbDir"   aria-label="Girar para a direita">▶</button>
+    </div>
 
     <div class="aviso" id="aviso">Bico 0° perto demais — descascando a tinta</div>
-    <div class="partida" id="partida"><span>Segure o clique para acionar o gatilho</span></div>
+    <div class="partida" id="partida"><span>Segure para acionar o gatilho<br>Arraste com dois dedos ou botão direito para girar</span></div>
+    <div class="feito" id="feito" aria-live="polite"></div>
 
     <div class="fim" id="fim">
       <div class="fim__cx">
         <h2 id="fimTitulo">Carro lavado</h2>
-        <p id="fimTexto">Nada mal.</p>
+        <p id="fimTexto"></p>
         <div class="placar">
           <div><span>Tempo</span><b id="fimTempo">0:00</b></div>
           <div><span>Limpeza</span><b id="fimLimpo">0%</b></div>
-          <div><span>Pintura</span><b id="fimDano">100%</b></div>
+          <div><span>Pintura</span><b id="fimDano">—</b></div>
         </div>
         <button type="button" class="btn btn--forte" id="btnDeNovo">Lavar outro</button>
       </div>
@@ -303,10 +253,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   </div>
 
   <section class="lista">
-    <div class="lista__topo">
-      <h2>Peças</h2>
-      <span class="lista__cont" id="listaCont">0 de 8 prontas</span>
-    </div>
+    <div class="lista__topo"><h2>Peças</h2><span class="lista__cont" id="listaCont">0 de 11 prontas</span></div>
     <div class="pecas" id="pecas"></div>
   </section>
 
@@ -315,7 +262,6 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
       <div class="rotulo">Bico — a cor é o ângulo do leque</div>
       <div class="bicos" id="bicos" role="group" aria-label="Escolha do bico"></div>
     </div>
-
     <div class="bloco">
       <div class="rotulo">Distância da lataria</div>
       <div class="dist">
@@ -332,832 +278,999 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     <ul id="manual"></ul>
   </section>
 
-  <p class="rodape">Sem cronômetro cobrando e sem como perder: o jogo é ir fechando as oito peças. A codificação de cor dos bicos é a usada em máquinas de pressão reais — e o vermelho de 0°, que concentra todo o jato num ponto, arranca tinta de verdade se chegar perto. Ligue o <b>modo realista</b> se quiser que isso também valha aqui.</p>
+  <p class="rodape">Sem cronômetro cobrando e sem como perder: o jogo é dar a volta no carro e fechar as onze peças. A codificação de cor dos bicos é a usada em máquinas de pressão reais — e o vermelho de 0°, que concentra todo o jato num ponto, arranca tinta de verdade se chegar perto. Ligue o <b>modo realista</b> se quiser que isso também valha aqui.</p>
 </div>
 
 <script>
 (() => {
-  'use strict';
+'use strict';
 
-  const W = 1000, H = 620;
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d');
+const cv = document.getElementById('cv');
+const gl = cv.getContext('webgl2', { antialias: true, alpha: false })
+        || cv.getContext('webgl', { antialias: true, alpha: false });
+if (!gl) {
+  document.querySelector('.visor').innerHTML =
+    '<div class="erro">Este navegador não expôs WebGL, então a versão 3D não roda aqui. ' +
+    'A versão clássica em 2D está em <b>classico-2d.html</b>.</div>';
+  return;
+}
+const ehGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
 
-  /* ─────────── bicos ─────────── */
-  const BICOS = [
-    { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', raio: 26,  poder: 2.30, solta: 0.30, psi: 2600, dano: true,
-      nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, no modo realista.' },
-    { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  raio: 42,  poder: 1.35, solta: 0.40, psi: 2100,
-      nota: 'Leque estreito. Bom para crosta de barro no para-lama.' },
-    { ang: '25°',   cor: '#35c47a', nome: 'Verde',    raio: 62,  poder: 0.85, solta: 0.45, psi: 1700,
-      nota: 'Uso geral. É com ele que se lava a maior parte do carro.' },
-    { ang: '40°',   cor: '#e8eaec', nome: 'Branco',   raio: 88,  poder: 0.52, solta: 0.50, psi: 1300,
-      nota: 'Leque largo e suave. Enxágue e acabamento sem risco.' },
-    { ang: 'Sabão', cor: '#2a3138', nome: 'Preto',    raio: 112, poder: 0.05, solta: 1.60, psi: 500,
-      nota: 'Quase não limpa: aplica detergente e solta a sujeira para o enxágue.' }
+/* ══════════ dados do jogo ══════════ */
+
+const BICOS = [
+  // raios em unidades de mundo — o carro tem 4,1 de comprimento.
+  // Calibrados para jogar, não para imitar a cobertura real de um leque.
+  { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', raio: .17, poder: 2.30, solta: .30, psi: 2600, dano: true,
+    nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, no modo realista.' },
+  { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  raio: .34, poder: 1.35, solta: .40, psi: 2100,
+    nota: 'Leque estreito. Bom para crosta de barro no para-lama.' },
+  { ang: '25°',   cor: '#35c47a', nome: 'Verde',    raio: .52, poder: .85,  solta: .45, psi: 1700,
+    nota: 'Uso geral. É com ele que se lava a maior parte do carro.' },
+  { ang: '40°',   cor: '#e8eaec', nome: 'Branco',   raio: .76, poder: .52,  solta: .50, psi: 1300,
+    nota: 'Leque largo e suave. Enxágue e acabamento sem risco.' },
+  { ang: 'Sabão', cor: '#2a3138', nome: 'Preto',    raio: .98, poder: .05,  solta: 1.6,  psi: 500,
+    nota: 'Quase não limpa: aplica detergente e solta a sujeira para o enxágue.' }
+];
+
+const PINTURAS = [
+  { nome: 'Branco',   rgb: [.86, .88, .89] },
+  { nome: 'Vermelho', rgb: [.62, .12, .13] },
+  { nome: 'Azul',     rgb: [.11, .30, .48] },
+  { nome: 'Grafite',  rgb: [.20, .22, .24] }
+];
+
+const PARTES = ['Capô', 'Teto', 'Vidros', 'Lateral esquerda', 'Lateral direita',
+                'Frente', 'Traseira', 'Roda diant. esq.', 'Roda diant. dir.',
+                'Roda tras. esq.', 'Roda tras. dir.'];
+const NP = PARTES.length;
+
+const MAT_PINTURA = 0, MAT_VIDRO = 1, MAT_PNEU = 2, MAT_RODA = 3;
+
+/* ══════════ malha do carro ══════════ */
+
+const pos = [], nor = [], mat = [], parte = [], idxs = [];
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const suave = (t) => t * t * (3 - 2 * t);
+function curva(t, pts) {                         // interpola uma tabela [z, valor]
+  if (t <= pts[0][0]) return pts[0][1];
+  const u = pts[pts.length - 1];
+  if (t >= u[0]) return u[1];
+  for (let i = 1; i < pts.length; i++) {
+    if (t <= pts[i][0]) {
+      const [z0, v0] = pts[i - 1], [z1, v1] = pts[i];
+      return v0 + (v1 - v0) * suave((t - z0) / (z1 - z0));
+    }
+  }
+  return u[1];
+}
+
+// perfil lateral: altura do teto ao longo do comprimento (z: traseira −, frente +)
+const TOPO = [[-2.05,1.00],[-1.75,1.08],[-1.35,1.22],[-.95,1.36],[-.40,1.44],
+              [.45,1.44],[.85,1.32],[1.10,1.00],[1.60,.94],[1.95,.90],[2.05,.80]];
+const BASE = [[-2.05,.50],[-1.80,.36],[-1.2,.30],[1.2,.30],[1.80,.36],[2.05,.50]];
+const LARG = [[-2.05,.72],[-1.7,.88],[-1.1,.94],[1.1,.94],[1.7,.89],[2.05,.74]];
+
+// A superelipse adensa vértices nos cantos, então as laterais planas — onde
+// fica a faixa de vidro — precisam de contorno generoso para não picotar.
+const NZ = 54, NT = 46;
+const Z0 = -2.05, Z1 = 2.05;
+
+function secao(z, k) {                            // ponto k do contorno na estação z
+  const th = k / NT * Math.PI * 2;
+  const n = 5.2;                                  // superelipse bem boxy: lataria plana lê como carro
+  const c = Math.cos(th), s = Math.sin(th);
+  const cx = Math.sign(c) * Math.abs(c) ** (2 / n);
+  const cy = Math.sign(s) * Math.abs(s) ** (2 / n);
+  const yb = curva(z, BASE), yt = curva(z, TOPO), lw = curva(z, LARG);
+  const yc = (yb + yt) / 2, h = (yt - yb) / 2;
+  const y = yc + h * cy;
+  // acima da linha de cintura a caixa estreita bastante: é o que separa
+  // a cabine do corpo e dá a silhueta de carro em vez de tubo
+  const CINTA = 1.02;
+  const alto = clamp((y - CINTA) / Math.max(.12, yt - CINTA), 0, 1);
+  const x = lw * cx * (1 - .34 * alto ** 1.3);
+  return [x, y, z];
+}
+
+// Faixa envidraçada limpa: acima da cintura, abaixo do teto e dentro da cabine.
+// Testar a normal aqui picotava o vidro em farrapos.
+function ehVidro(x, y, z) {
+  const yt = curva(z, TOPO);
+  return z > -1.28 && z < 1.0 && y > 1.06 && y < yt - .05;
+}
+
+function partePara(x, y, z, ny, vidro) {
+  if (vidro) return 3;
+  if (z > 1.88) return 6;
+  if (z < -1.88) return 7;
+  if (ny > .55) {
+    if (z > .95) return 1;
+    if (z < -1.10) return 7;
+    return 2;
+  }
+  return x < 0 ? 4 : 5;
+}
+
+function construirCorpo() {
+  const base = pos.length / 3;
+  const anel = [];
+  for (let i = 0; i < NZ; i++) {
+    const z = Z0 + (Z1 - Z0) * (i / (NZ - 1));
+    const linha = [];
+    for (let k = 0; k < NT; k++) linha.push(secao(z, k));
+    anel.push(linha);
+  }
+  for (let i = 0; i < NZ; i++) for (let k = 0; k < NT; k++) {
+    const p = anel[i][k];
+    // normal por diferenças finitas nos vizinhos
+    const a = anel[Math.min(NZ - 1, i + 1)][k], b = anel[Math.max(0, i - 1)][k];
+    const c = anel[i][(k + 1) % NT], d = anel[i][(k - 1 + NT) % NT];
+    const t1 = [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+    const t2 = [c[0]-d[0], c[1]-d[1], c[2]-d[2]];
+    let n = [t1[1]*t2[2]-t1[2]*t2[1], t1[2]*t2[0]-t1[0]*t2[2], t1[0]*t2[1]-t1[1]*t2[0]];
+    const L = Math.hypot(n[0], n[1], n[2]) || 1;
+    n = [n[0]/L, n[1]/L, n[2]/L];
+    if (n[1] * (p[1] - .7) + n[0] * p[0] < 0) n = [-n[0], -n[1], -n[2]];  // aponta para fora
+    const vidro = ehVidro(p[0], p[1], p[2]);
+    pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]);
+    mat.push(vidro ? MAT_VIDRO : MAT_PINTURA);
+    parte.push(partePara(p[0], p[1], p[2], n[1], vidro));
+  }
+  for (let i = 0; i < NZ - 1; i++) for (let k = 0; k < NT; k++) {
+    const k2 = (k + 1) % NT;
+    const a = base + i * NT + k, b = base + i * NT + k2;
+    const c = base + (i + 1) * NT + k, d = base + (i + 1) * NT + k2;
+    idxs.push(a, c, b, b, c, d);
+  }
+  // tampas nas duas pontas
+  for (const [i, pid, ny] of [[0, 7, 0], [NZ - 1, 6, 0]]) {
+    const z = Z0 + (Z1 - Z0) * (i / (NZ - 1));
+    const nz = i === 0 ? -1 : 1;
+    let cxm = 0, cym = 0;
+    for (let k = 0; k < NT; k++) { cxm += anel[i][k][0]; cym += anel[i][k][1]; }
+    cxm /= NT; cym /= NT;
+    const cen = pos.length / 3;
+    pos.push(cxm, cym, z); nor.push(0, 0, nz); mat.push(MAT_PINTURA); parte.push(pid);
+    const aro = pos.length / 3;
+    for (let k = 0; k < NT; k++) {
+      const p = anel[i][k];
+      pos.push(p[0], p[1], z); nor.push(0, 0, nz); mat.push(MAT_PINTURA); parte.push(pid);
+    }
+    for (let k = 0; k < NT; k++) {
+      const k2 = (k + 1) % NT;
+      if (nz > 0) idxs.push(cen, aro + k, aro + k2);
+      else idxs.push(cen, aro + k2, aro + k);
+    }
+  }
+}
+
+function construirRoda(cx, cz, pid) {
+  const R = .43, r = .23, larg = .14, NA = 26, NR = 3;
+  const lado = Math.sign(cx);
+  const xExt = cx + lado * larg, xInt = cx - lado * larg;
+  const base = pos.length / 3;
+
+  // banda de rodagem
+  for (let j = 0; j < 2; j++) {
+    const x = j === 0 ? xInt : xExt;
+    for (let k = 0; k < NA; k++) {
+      const a = k / NA * Math.PI * 2;
+      const y = R + Math.sin(a) * R, z = cz + Math.cos(a) * R;
+      pos.push(x, y, z); nor.push(0, Math.sin(a), Math.cos(a));
+      mat.push(MAT_PNEU); parte.push(pid);
+    }
+  }
+  for (let k = 0; k < NA; k++) {
+    const k2 = (k + 1) % NA;
+    const a = base + k, b = base + k2, c = base + NA + k, d = base + NA + k2;
+    idxs.push(a, b, c, b, d, c);
+  }
+  // face externa: pneu em volta e roda no meio
+  const cen = pos.length / 3;
+  pos.push(xExt, R, cz); nor.push(lado, 0, 0); mat.push(MAT_RODA); parte.push(pid);
+  for (let ring = 1; ring <= NR; ring++) {
+    const rr = R * ring / NR;
+    for (let k = 0; k < NA; k++) {
+      const a = k / NA * Math.PI * 2;
+      pos.push(xExt, R + Math.sin(a) * rr, cz + Math.cos(a) * rr);
+      nor.push(lado, 0, 0);
+      mat.push(rr > r ? MAT_PNEU : MAT_RODA); parte.push(pid);
+    }
+  }
+  for (let k = 0; k < NA; k++) {
+    const k2 = (k + 1) % NA;
+    const a0 = cen + 1 + k, b0 = cen + 1 + k2;
+    if (lado > 0) idxs.push(cen, a0, b0); else idxs.push(cen, b0, a0);
+    for (let ring = 1; ring < NR; ring++) {
+      const s = cen + 1 + (ring - 1) * NA, t = cen + 1 + ring * NA;
+      if (lado > 0) idxs.push(s + k, t + k, s + k2, s + k2, t + k, t + k2);
+      else idxs.push(s + k, s + k2, t + k, s + k2, t + k2, t + k);
+    }
+  }
+}
+
+construirCorpo();
+construirRoda(-.86, 1.38, 8);   // dianteira esquerda
+construirRoda(.86, 1.38, 9);    // dianteira direita
+construirRoda(-.86, -1.40, 10); // traseira esquerda
+construirRoda(.86, -1.40, 11);  // traseira direita
+
+const VP = new Float32Array(pos), VN = new Float32Array(nor);
+const VM = new Float32Array(mat), VPA = new Uint8Array(parte);
+const IDX = ehGL2 ? new Uint32Array(idxs) : new Uint16Array(idxs);
+const NV = VP.length / 3;
+
+// O que não dá para alcançar não pode contar, senão a peça nunca fecha:
+// a barriga do carro e a face interna das rodas, virada para a lataria.
+const conta = new Uint8Array(NV);
+for (let i = 0; i < NV; i++) {
+  const roda = VPA[i] >= 8;
+  const interna = roda && Math.abs(VP[i * 3]) < .86;
+  conta[i] = (VN[i * 3 + 1] < -.45 || interna) ? 0 : 1;
+}
+
+const sujeira = new Float32Array(NV);
+const dureza  = new Float32Array(NV);
+const molhado = new Float32Array(NV);
+
+/* ══════════ WebGL ══════════ */
+
+const cab = (fonte) => ehGL2 ? '#version 300 es\n' + fonte : fonte;
+const V = ehGL2 ? 'in' : 'attribute', S = ehGL2 ? 'out' : 'varying', SF = ehGL2 ? 'in' : 'varying';
+const SAIDA = ehGL2 ? 'out vec4 corFinal;\n' : '';
+const POR = ehGL2 ? 'corFinal' : 'gl_FragColor';
+const TEX = ehGL2 ? 'texture' : 'texture2D';
+
+function shader(tipo, fonte) {
+  const s = gl.createShader(tipo);
+  gl.shaderSource(s, fonte); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + fonte);
+  return s;
+}
+function programa(vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, cab(vs)));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, cab(fs)));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+const progCarro = programa(`
+precision highp float;
+${V} vec3 aPos; ${V} vec3 aNor; ${V} float aMat;
+${V} float aSuj; ${V} float aMol;
+uniform mat4 uVP;
+${S} vec3 vPos; ${S} vec3 vNor; ${S} float vMat; ${S} float vSuj; ${S} float vMol;
+void main() {
+  vPos = aPos; vNor = aNor; vMat = aMat; vSuj = aSuj; vMol = aMol;
+  gl_Position = uVP * vec4(aPos, 1.0);
+}`, `
+precision highp float;
+${SF} vec3 vPos; ${SF} vec3 vNor; ${SF} float vMat; ${SF} float vSuj; ${SF} float vMol;
+uniform vec3 uOlho; uniform vec3 uPintura; uniform float uDica;
+${SAIDA}
+
+// hash sem sin(): o seno é caro em GPU móvel e este é o trecho mais quente
+float hash(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float ruido(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = mix(mix(mix(hash(i+vec3(0,0,0)), hash(i+vec3(1,0,0)), f.x),
+                    mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
+                mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x),
+                    mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
+  return a;
+}
+
+void main() {
+  vec3 N = normalize(vNor);
+  vec3 Vd = normalize(uOlho - vPos);
+
+  vec3 base = uPintura;
+  float brilho = 26.0, espec = 0.35;
+  if (vMat > 0.5 && vMat < 1.5) { base = vec3(0.055, 0.075, 0.095); brilho = 80.0; espec = 0.9; }
+  else if (vMat > 1.5 && vMat < 2.5) { base = vec3(0.045, 0.048, 0.052); brilho = 8.0; espec = 0.05; }
+  else if (vMat > 2.5) { base = vec3(0.42, 0.45, 0.48); brilho = 50.0; espec = 0.6; }
+
+  // granulação do encardido: some de forma irregular conforme limpa
+  float g = ruido(vPos * 7.0) * 0.62 + ruido(vPos * 24.0) * 0.38;
+  float suj = clamp(vSuj * (0.42 + 1.15 * g), 0.0, 1.0);
+  float grao = smoothstep(0.62, 0.95, g) * vSuj;
+
+  vec3 corSujeira = mix(vec3(0.19, 0.145, 0.09), vec3(0.075, 0.055, 0.035), grao);
+  vec3 cor = mix(base, corSujeira, suj);
+
+  // sujeira é fosca; limpo e molhado brilham
+  espec *= (1.0 - suj * 0.92) * (1.0 + vMol * 1.6);
+  cor = mix(cor, cor * 1.06 + vec3(0.03), vMol * 0.5);
+
+  vec3 L1 = normalize(vec3(-0.45, 0.85, 0.35));
+  vec3 L2 = normalize(vec3(0.7, 0.25, -0.6));
+  float dif = max(dot(N, L1), 0.0) * 0.62 + max(dot(N, L2), 0.0) * 0.20;
+  float amb = 0.20 + 0.12 * (N.y * 0.5 + 0.5);
+  vec3 H = normalize(L1 + Vd);
+  float sp = pow(max(dot(N, H), 0.0), brilho) * espec;
+  float borda = pow(1.0 - max(dot(N, Vd), 0.0), 3.0) * 0.16;
+
+  vec3 saida = cor * (amb + dif) + vec3(sp) + vec3(0.35, 0.45, 0.55) * borda;
+  saida += vec3(0.30, 0.75, 0.92) * uDica * suj * 0.55;   // pulso do "onde falta"
+  ${POR} = vec4(pow(clamp(saida, 0.0, 1.0), vec3(0.4545)), 1.0);
+}`);
+
+const progSimples = programa(`
+precision highp float;
+${V} vec3 aPos; ${V} vec4 aCor;
+uniform mat4 uVP; uniform float uTam;
+${S} vec4 vCor;
+void main() { vCor = aCor; gl_Position = uVP * vec4(aPos, 1.0); gl_PointSize = uTam; }`, `
+precision highp float;
+${SF} vec4 vCor;
+uniform float uPonto;
+${SAIDA}
+void main() {
+  // gl_PointCoord só faz sentido em GL_POINTS; nas outras primitivas uPonto é 0
+  float m = 1.0;
+  if (uPonto > 0.5) {
+    float r = length(gl_PointCoord - vec2(0.5)) * 2.0;
+    m = max(0.0, 1.0 - r);
+    m *= m;
+  }
+  ${POR} = vec4(vCor.rgb, vCor.a * m);
+}`);
+
+// ─── buffers ───
+const bufPos = gl.createBuffer(), bufNor = gl.createBuffer(), bufMat = gl.createBuffer();
+const bufSuj = gl.createBuffer(), bufMol = gl.createBuffer(), bufIdx = gl.createBuffer();
+
+function enviar(buf, dados, uso) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, dados, uso);
+}
+enviar(bufPos, VP, gl.STATIC_DRAW);
+enviar(bufNor, VN, gl.STATIC_DRAW);
+enviar(bufMat, VM, gl.STATIC_DRAW);
+enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, IDX, gl.STATIC_DRAW);
+const TIPO_IDX = ehGL2 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+
+const bufAux = gl.createBuffer(), bufAuxCor = gl.createBuffer();
+
+function ligar(prog, nome, buf, n) {
+  const loc = gl.getAttribLocation(prog, nome);
+  if (loc < 0) return;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0);
+}
+
+/* ══════════ matemática de câmera ══════════ */
+
+function perspectiva(fov, asp, n, f) {
+  const t = 1 / Math.tan(fov / 2);
+  return new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0]);
+}
+function olhar(e, c, up) {
+  let f = [c[0]-e[0], c[1]-e[1], c[2]-e[2]];
+  let L = Math.hypot(...f); f = f.map(v => v / L);
+  let s = [f[1]*up[2]-f[2]*up[1], f[2]*up[0]-f[0]*up[2], f[0]*up[1]-f[1]*up[0]];
+  L = Math.hypot(...s) || 1; s = s.map(v => v / L);
+  const u = [s[1]*f[2]-s[2]*f[1], s[2]*f[0]-s[0]*f[2], s[0]*f[1]-s[1]*f[0]];
+  return { m: new Float32Array([
+    s[0],u[0],-f[0],0, s[1],u[1],-f[1],0, s[2],u[2],-f[2],0,
+    -(s[0]*e[0]+s[1]*e[1]+s[2]*e[2]), -(u[0]*e[0]+u[1]*e[1]+u[2]*e[2]), f[0]*e[0]+f[1]*e[1]+f[2]*e[2], 1
+  ]), f, s, u };
+}
+function mult(a, b) {
+  const o = new Float32Array(16);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    let v = 0;
+    for (let k = 0; k < 4; k++) v += a[k * 4 + j] * b[i * 4 + k];
+    o[i * 4 + j] = v;
+  }
+  return o;
+}
+
+/* ══════════ estado ══════════ */
+
+const ALVO = [0, .8, 0];
+const FOV = 50 * Math.PI / 180;
+let giro = -0.7, alt = 0.34, dist = 5.6;
+let giroAlvo = giro, altAlvo = alt, distAlvo = dist;
+
+let bico = 2, afast = .35, pintura = 0;
+let jatoAtivo = false, temMira = false, ponteiroPx = { x: 0, y: 0 };
+let acerto = null, acertoAnt = null;
+let orbitando = false, ultOrb = null, dedos = new Map();
+let realista = false, tinta = 1, danoAcum = 0, riscoAtivo = false;
+let t0 = 0, tempo = 0, rodando = false, terminado = false;
+let dicaAte = 0, som = true;
+let particulas = [];
+
+const somaPeca = new Float64Array(NP + 1);
+const pctPeca = new Float64Array(NP + 1);
+const prontaPeca = new Uint8Array(NP + 1);
+
+const somaInicial = new Float64Array(NP + 1);
+let totalInicial = 1;
+
+function sujar() {
+  const semente = Math.random() * 100;
+  for (let i = 0; i < NV; i++) {
+    if (!conta[i]) { sujeira[i] = 0; dureza[i] = 0; molhado[i] = 0; continue; }
+    const y = VP[i * 3 + 1], z = VP[i * 3 + 2];
+    const baixo = clamp(1 - (y - .3) / 1.15, 0, 1);
+    const n = Math.abs(Math.sin(VP[i*3] * 3.1 + semente) * Math.cos(z * 2.3 - semente) * Math.sin(y * 5.7));
+    sujeira[i] = clamp(.62 + baixo * .38 + n * .22, 0, 1);
+    dureza[i] = clamp(.06 + baixo * .5 + (n > .78 ? .38 : 0), 0, .93);
+    molhado[i] = 0;
+  }
+  // o progresso é relativo ao quanto estava sujo: começa em 0%, não em 12%
+  somaInicial.fill(0); totalInicial = 0;
+  for (let i = 0; i < NV; i++) {
+    if (!conta[i]) continue;
+    somaInicial[VPA[i]] += sujeira[i];
+    totalInicial += sujeira[i];
+  }
+  enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+  enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
+  prontaPeca.fill(0); pctPeca.fill(0);
+  apurar();
+}
+
+let pctLimpo = 0;
+function apurar() {
+  somaPeca.fill(0);
+  let s = 0;
+  for (let i = 0; i < NV; i++) {
+    if (!conta[i]) continue;
+    somaPeca[VPA[i]] += sujeira[i]; s += sujeira[i];
+  }
+  const novas = [];
+  for (let p = 1; p <= NP; p++) {
+    pctPeca[p] = somaInicial[p] > 0 ? clamp(1 - somaPeca[p] / somaInicial[p], 0, 1) : 1;
+    if (!prontaPeca[p] && pctPeca[p] >= .995) { prontaPeca[p] = 1; novas.push(p); }
+  }
+  pctLimpo = totalInicial > 0 ? clamp(1 - s / totalInicial, 0, 1) : 0;
+  return novas;
+}
+
+/* ══════════ raio × malha ══════════ */
+
+function raioDoPonteiro(px, py) {
+  const r = cv.getBoundingClientRect();
+  const nx = (px - r.left) / r.width * 2 - 1;
+  const ny = 1 - (py - r.top) / r.height * 2;
+  const asp = r.width / r.height;
+  const tg = Math.tan(FOV / 2);
+  const { f, s, u } = camera;
+  const d = [
+    f[0] + s[0] * nx * tg * asp + u[0] * ny * tg,
+    f[1] + s[1] * nx * tg * asp + u[1] * ny * tg,
+    f[2] + s[2] * nx * tg * asp + u[2] * ny * tg
   ];
+  const L = Math.hypot(...d);
+  return { o: olho, d: [d[0]/L, d[1]/L, d[2]/L] };
+}
 
-  const PINTURAS = [
-    { nome: 'Branco',   base: '#dfe3e6', escuro: '#a8b0b6', claro: '#ffffff' },
-    { nome: 'Vermelho', base: '#b4292d', escuro: '#7b1a1e', claro: '#e8595c' },
-    { nome: 'Azul',     base: '#22557f', escuro: '#143850', claro: '#4a8bbd' },
-    { nome: 'Grafite',  base: '#3a4046', escuro: '#22272b', claro: '#5f686f' }
-  ];
-
-  // Cada peça é medida por conta própria — é esse o laço do gênero:
-  // não se limpa "o carro", se vai riscando uma lista.
-  const PARTES = ['Frente e capô', 'Porta dianteira', 'Porta traseira', 'Traseira',
-                  'Teto', 'Vidros', 'Roda dianteira', 'Roda traseira'];
-  const RODAS = [{ x: 312, y: 436, r: 66 }, { x: 700, y: 436, r: 66 }];
-
-  const CELULA = 20;
-  const COLS = Math.ceil(W / CELULA), ROWS = Math.ceil(H / CELULA);
-
-  /* ─────────── estado ─────────── */
-  let bico = 2, distancia = 0.35, pintura = 0;
-  let jatoAtivo = false, ponteiro = { x: W / 2, y: H / 2 }, ponteiroAnt = null, temPonteiro = false;
-  let dureza = new Float32Array(COLS * ROWS);
-  let pctLimpo = 0;
-  let amostraIdx = new Uint32Array(0), amostraParte = new Uint8Array(0);
-  const inicialPeca = new Float64Array(PARTES.length + 1);
-  const restaPeca = new Float64Array(PARTES.length + 1);
-  const pctPeca = new Float64Array(PARTES.length + 1);
-  const prontaPeca = new Uint8Array(PARTES.length + 1);
-  let tinta = 1, danoAcum = 0, riscoAtivo = false, realista = false;
-  let t0 = 0, tempo = 0, rodando = false, terminado = false;
-  let dicaAte = 0, som = true;
-  let particulas = [];
-  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  /* camadas fora de tela */
-  const sujo = document.createElement('canvas'); sujo.width = W; sujo.height = H;
-  const sctx = sujo.getContext('2d', { willReadFrequently: true });
-  const danoCv = document.createElement('canvas'); danoCv.width = W; danoCv.height = H;
-  const dctx = danoCv.getContext('2d');
-  const mapaCv = document.createElement('canvas'); mapaCv.width = W; mapaCv.height = H;
-  const pctx = mapaCv.getContext('2d', { willReadFrequently: true });
-  const molhado = document.createElement('canvas'); molhado.width = W; molhado.height = H;
-  const wctx = molhado.getContext('2d');
-  const scratch = document.createElement('canvas'); scratch.width = W; scratch.height = H;
-  const xctx = scratch.getContext('2d');
-
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-
-  /* ─────────── silhueta do carro ─────────── */
-  function caminhoCorpo(c) {
-    c.moveTo(150, 398);
-    c.lineTo(152, 366);
-    c.quadraticCurveTo(155, 346, 182, 339);
-    c.lineTo(302, 326);
-    c.lineTo(392, 250);
-    c.quadraticCurveTo(402, 243, 418, 243);
-    c.lineTo(626, 243);
-    c.quadraticCurveTo(646, 244, 655, 254);
-    c.lineTo(744, 328);
-    c.lineTo(848, 336);
-    c.quadraticCurveTo(868, 340, 870, 362);
-    c.lineTo(872, 404);
-    c.quadraticCurveTo(872, 424, 852, 428);
-    c.lineTo(776, 432);
-    c.arc(700, 436, 76, 0, Math.PI, true);
-    c.lineTo(390, 432);
-    c.arc(312, 436, 76, 0, Math.PI, true);
-    c.lineTo(168, 428);
-    c.quadraticCurveTo(150, 424, 150, 398);
-    c.closePath();
+function intersectar(ro, rd) {
+  let melhor = Infinity, ponto = null;
+  for (let t = 0; t < IDX.length; t += 3) {
+    const i0 = IDX[t] * 3, i1 = IDX[t+1] * 3, i2 = IDX[t+2] * 3;
+    const ax = VP[i0], ay = VP[i0+1], az = VP[i0+2];
+    const e1x = VP[i1]-ax, e1y = VP[i1+1]-ay, e1z = VP[i1+2]-az;
+    const e2x = VP[i2]-ax, e2y = VP[i2+1]-ay, e2z = VP[i2+2]-az;
+    const px = rd[1]*e2z - rd[2]*e2y, py = rd[2]*e2x - rd[0]*e2z, pz = rd[0]*e2y - rd[1]*e2x;
+    const det = e1x*px + e1y*py + e1z*pz;
+    if (det > -1e-7 && det < 1e-7) continue;
+    const inv = 1 / det;
+    const tx = ro[0]-ax, ty = ro[1]-ay, tz = ro[2]-az;
+    const v = (tx*px + ty*py + tz*pz) * inv;
+    if (v < 0 || v > 1) continue;
+    const qx = ty*e1z - tz*e1y, qy = tz*e1x - tx*e1z, qz = tx*e1y - ty*e1x;
+    const w = (rd[0]*qx + rd[1]*qy + rd[2]*qz) * inv;
+    if (w < 0 || v + w > 1) continue;
+    const dd = (e2x*qx + e2y*qy + e2z*qz) * inv;
+    if (dd > .02 && dd < melhor) {
+      melhor = dd;
+      ponto = [ro[0]+rd[0]*dd, ro[1]+rd[1]*dd, ro[2]+rd[2]*dd];
+    }
   }
+  return ponto;
+}
 
-  function silhueta(c) { c.beginPath(); caminhoCorpo(c); }
+/* ══════════ jato ══════════ */
 
-  /** Corpo mais as rodas: as rodas também sujam e também contam como peça. */
-  function regiaoSuja(c) {
-    c.beginPath();
-    caminhoCorpo(c);
-    for (const r of RODAS) { c.moveTo(r.x + r.r, r.y); c.arc(r.x, r.y, r.r, 0, Math.PI * 2); }
-  }
+const raioAtual = () => BICOS[bico].raio * (.62 + afast * 1.15);
+const forcaAtual = () => 1 - afast * .55;
 
-  /**
-   * Mapa de peças: cada região pintada com o seu índice no canal vermelho.
-   * Lido uma vez para saber a que peça pertence cada pixel amostrado.
-   */
-  function desenhaMapa() {
-    pctx.clearRect(0, 0, W, H);
-    const id = (i) => `rgb(${i},0,0)`;
+function aplicarJato(p, rd, dt) {
+  const b = BICOS[bico], R = raioAtual(), forca = forcaAtual();
+  const poder = b.poder * forca * dt * 4.5;
+  const solta = b.solta * forca * dt * 2.6;
+  const R2 = R * R;
+  let mexeu = false;
 
-    pctx.fillStyle = id(7); pctx.beginPath(); pctx.arc(RODAS[0].x, RODAS[0].y, RODAS[0].r, 0, 7); pctx.fill();
-    pctx.fillStyle = id(8); pctx.beginPath(); pctx.arc(RODAS[1].x, RODAS[1].y, RODAS[1].r, 0, 7); pctx.fill();
+  for (let i = 0; i < NV; i++) {
+    if (!conta[i]) continue;
+    const dx = VP[i*3] - p[0], dy = VP[i*3+1] - p[1], dz = VP[i*3+2] - p[2];
+    const d2 = dx*dx + dy*dy + dz*dz;
+    if (d2 > R2) continue;
+    // só o lado voltado para o jato: senão a água atravessaria a lataria
+    if (VN[i*3]*rd[0] + VN[i*3+1]*rd[1] + VN[i*3+2]*rd[2] > -.05) continue;
 
-    pctx.save(); silhueta(pctx); pctx.clip();
-    pctx.fillStyle = id(1); pctx.fillRect(0, 0, 302, H);
-    pctx.fillStyle = id(2); pctx.fillRect(302, 0, 198, H);
-    pctx.fillStyle = id(3); pctx.fillRect(500, 0, 200, H);
-    pctx.fillStyle = id(4); pctx.fillRect(700, 0, W - 700, H);
-    pctx.fillStyle = id(5); pctx.fillRect(302, 0, 398, 266);   // teto por cima das portas
-    pctx.fillStyle = id(6);                                     // vidros por último
-    pctx.beginPath(); pctx.moveTo(316,322); pctx.lineTo(398,258); pctx.lineTo(494,258); pctx.lineTo(494,322); pctx.closePath(); pctx.fill();
-    pctx.beginPath(); pctx.moveTo(508,258); pctx.lineTo(620,258); pctx.lineTo(700,322); pctx.lineTo(508,322); pctx.closePath(); pctx.fill();
-    pctx.restore();
-  }
-
-  /**
-   * Pré-calcula onde amostrar. Guardar o deslocamento do byte de alfa e a peça
-   * evita reler o mapa a cada medição — só o canvas de sujeira é lido.
-   */
-  function prepararAmostras() {
-    const m = pctx.getImageData(0, 0, W, H).data;
-    const idx = [], par = [];
-    for (let y = 0; y < H; y += 3) {
-      for (let x = 0; x < W; x += 3) {
-        const o = (y * W + x) * 4;
-        if (m[o + 3] === 0) continue;
-        const p = m[o];
-        if (p >= 1 && p <= PARTES.length) { idx.push(o + 3); par.push(p); }
-      }
-    }
-    amostraIdx = new Uint32Array(idx);
-    amostraParte = new Uint8Array(par);
-  }
-
-  function roda(c, cx, cy) {
-    c.fillStyle = '#0c0e10';
-    c.beginPath(); c.arc(cx, cy, 62, 0, 7); c.fill();
-    const g = c.createRadialGradient(cx - 8, cy - 10, 6, cx, cy, 40);
-    g.addColorStop(0, '#8d959b'); g.addColorStop(1, '#4a5158');
-    c.fillStyle = g;
-    c.beginPath(); c.arc(cx, cy, 36, 0, 7); c.fill();
-    c.strokeStyle = '#2b3136'; c.lineWidth = 3;
-    for (let i = 0; i < 5; i++) {
-      const a = i * Math.PI * 2 / 5 - 1.2;
-      c.beginPath(); c.moveTo(cx + Math.cos(a) * 9, cy + Math.sin(a) * 9);
-      c.lineTo(cx + Math.cos(a) * 32, cy + Math.sin(a) * 32); c.stroke();
-    }
-    c.fillStyle = '#2b3136';
-    c.beginPath(); c.arc(cx, cy, 8, 0, 7); c.fill();
-  }
-
-  function desenhaCarro(c) {
-    const p = PINTURAS[pintura];
-
-    // sombra no chão
-    const sg = c.createRadialGradient(510, 500, 20, 510, 500, 380);
-    sg.addColorStop(0, 'rgba(0,0,0,.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = sg;
-    c.beginPath(); c.ellipse(510, 500, 380, 34, 0, 0, 7); c.fill();
-
-    roda(c, 312, 436); roda(c, 700, 436);
-
-    // corpo
-    c.save(); silhueta(c);
-    const g = c.createLinearGradient(0, 230, 0, 450);
-    g.addColorStop(0, p.claro); g.addColorStop(.42, p.base); g.addColorStop(1, p.escuro);
-    c.fillStyle = g; c.fill();
-
-    // reflexo alto da lataria
-    c.clip();
-    c.fillStyle = 'rgba(255,255,255,.16)';
-    c.beginPath(); c.moveTo(150, 352); c.lineTo(880, 340); c.lineTo(880, 356); c.lineTo(150, 372); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(0,0,0,.18)';
-    c.fillRect(0, 404, W, 40);
-    c.restore();
-
-    // vidros
-    c.fillStyle = '#171c21';
-    c.beginPath();
-    c.moveTo(316, 322); c.lineTo(398, 258); c.lineTo(494, 258); c.lineTo(494, 322); c.closePath(); c.fill();
-    c.beginPath();
-    c.moveTo(508, 258); c.lineTo(620, 258); c.lineTo(700, 322); c.lineTo(508, 322); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(255,255,255,.09)';
-    c.beginPath(); c.moveTo(330, 318); c.lineTo(400, 264); c.lineTo(432, 264); c.lineTo(352, 318); c.closePath(); c.fill();
-
-    // vincos e frisos
-    c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 2.5;
-    c.beginPath(); c.moveTo(500, 258); c.lineTo(500, 424); c.stroke();
-    c.beginPath(); c.moveTo(302, 328); c.lineTo(302, 420); c.stroke();
-    c.strokeStyle = 'rgba(0,0,0,.2)'; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(176, 344); c.lineTo(300, 331); c.stroke();
-
-    // maçanetas
-    c.fillStyle = 'rgba(0,0,0,.4)';
-    c.fillRect(452, 338, 34, 7); c.fillRect(636, 338, 34, 7);
-
-    // faróis
-    c.fillStyle = '#f2e6c4';
-    c.beginPath(); c.moveTo(152, 356); c.lineTo(196, 350); c.lineTo(198, 372); c.lineTo(153, 375); c.closePath(); c.fill();
-    c.fillStyle = '#c4373a';
-    c.beginPath(); c.moveTo(846, 350); c.lineTo(868, 353); c.lineTo(869, 378); c.lineTo(846, 376); c.closePath(); c.fill();
-
-    // frisos escuros embaixo
-    c.fillStyle = 'rgba(0,0,0,.34)';
-    c.fillRect(168, 416, 690, 12);
-  }
-
-  /* ─────────── cenário ─────────── */
-  function fundo(c) {
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#191e23'); g.addColorStop(.62, '#12161a'); g.addColorStop(.63, '#191d21'); g.addColorStop(1, '#0c0f12');
-    c.fillStyle = g; c.fillRect(0, 0, W, H);
-
-    // painéis da parede
-    c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 2;
-    for (let x = 90; x < W; x += 132) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 388); c.stroke(); }
-    c.beginPath(); c.moveTo(0, 388); c.lineTo(W, 388); c.stroke();
-
-    // luz de teto
-    const l = c.createRadialGradient(500, 40, 10, 500, 40, 460);
-    l.addColorStop(0, 'rgba(245,197,24,.11)'); l.addColorStop(1, 'rgba(245,197,24,0)');
-    c.fillStyle = l; c.fillRect(0, 0, W, 400);
-
-    // ralo
-    c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 3;
-    for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(430 + i * 15, 560); c.lineTo(430 + i * 15, 596); c.stroke(); }
-  }
-
-  /* ─────────── sujeira ─────────── */
-  function gerarSujeira() {
-    sctx.clearRect(0, 0, W, H);
-    dctx.clearRect(0, 0, W, H);
-    dureza.fill(0);
-
-    wctx.clearRect(0, 0, W, H);
-
-    sctx.save();
-    regiaoSuja(sctx);
-    sctx.clip();
-
-    // camada de encardido: cobre tudo e escurece para baixo
-    const base = sctx.createLinearGradient(0, 236, 0, 508);
-    base.addColorStop(0, 'rgba(96,78,54,.42)');
-    base.addColorStop(.45, 'rgba(84,66,44,.62)');
-    base.addColorStop(1, 'rgba(58,44,28,.88)');
-    sctx.fillStyle = base;
-    sctx.fillRect(0, 230, W, 285);
-
-    // manchas de poeira assentada
-    for (let i = 0; i < 320; i++) {
-      const x = rnd(140, 890), y = rnd(238, 448);
-      const baixo = clamp((y - 240) / 205, 0, 1);
-      const r = rnd(22, 82);
-      const g = sctx.createRadialGradient(x, y, 0, x, y, r);
-      const a = rnd(.22, .5) * (.5 + baixo * .75);
-      g.addColorStop(0, `rgba(78,60,38,${a})`);
-      g.addColorStop(1, 'rgba(78,60,38,0)');
-      sctx.fillStyle = g;
-      sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
-    }
-
-    // granulado, para a sujeira não virar borrão liso
-    for (let i = 0; i < 2600; i++) {
-      const x = rnd(140, 890), y = rnd(238, 450);
-      sctx.fillStyle = `rgba(${44 + Math.random() * 40 | 0},${34 + Math.random() * 30 | 0},22,${rnd(.15, .5)})`;
-      sctx.fillRect(x, y, rnd(1, 3), rnd(1, 3));
-    }
-
-    // escorridos de chuva
-    for (let i = 0; i < 60; i++) {
-      const x = rnd(150, 880), y = rnd(246, 330), h = rnd(60, 175);
-      const g = sctx.createLinearGradient(x, y, x, y + h);
-      g.addColorStop(0, 'rgba(52,40,24,.55)'); g.addColorStop(1, 'rgba(52,40,24,0)');
-      sctx.fillStyle = g;
-      sctx.fillRect(x, y, rnd(4, 12), h);
-    }
-
-    // barro respingado da estrada
-    for (let i = 0; i < 620; i++) {
-      const x = rnd(150, 880);
-      const y = rnd(346, 450);
-      const r = rnd(2, 13);
-      sctx.fillStyle = `rgba(${56 + Math.random() * 26 | 0},${42 + Math.random() * 20 | 0},26,${rnd(.45, .88)})`;
-      sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
-      marcaDureza(x, y, r + 8, rnd(.28, .52));
-    }
-
-    // crosta nos para-lamas
-    for (const cx of [312, 700]) {
-      for (let i = 0; i < 130; i++) {
-        const a = rnd(Math.PI * 1.05, Math.PI * 1.95);
-        const rr = rnd(76, 116);
-        const x = cx + Math.cos(a) * rr, y = 436 + Math.sin(a) * rr;
-        const r = rnd(6, 20);
-        sctx.fillStyle = `rgba(58,44,28,${rnd(.4, .8)})`;
-        sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
-        marcaDureza(x, y, r + 12, rnd(.5, .8));
-      }
-    }
-
-    // cocô de passarinho: pequeno, nas superfícies de cima, com escorrido
-    for (let i = 0, n = 3 + (Math.random() * 3 | 0); i < n; i++) {
-      const x = rnd(200, 830), y = rnd(248, 350), r = rnd(6, 11);
-      sctx.fillStyle = 'rgba(232,228,214,.9)';
-      for (let k = 0; k < 5; k++) {
-        const a = rnd(0, Math.PI * 2), d = rnd(0, r * .8);
-        sctx.beginPath();
-        sctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * rnd(.45, .8), 0, 7);
-        sctx.fill();
-      }
-      sctx.fillStyle = 'rgba(232,228,214,.6)';
-      sctx.fillRect(x - 2, y, rnd(3, 5), rnd(8, 22));  // escorrido
-      marcaDureza(x, y, r + 12, .95);
-    }
-
-    // piche e resina: respingos escuros pequenos nos painéis baixos
-    for (let i = 0, n = 10 + (Math.random() * 8 | 0); i < n; i++) {
-      const x = rnd(180, 850), y = rnd(352, 428), r = rnd(4, 9);
-      sctx.fillStyle = 'rgba(22,16,10,.95)';
-      for (let k = 0; k < 4; k++) {
-        const a = rnd(0, Math.PI * 2), d = rnd(0, r * .9);
-        sctx.beginPath();
-        sctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * rnd(.4, .75), 0, 7);
-        sctx.fill();
-      }
-      marcaDureza(x, y, r + 10, .92);
-    }
-
-    // rodas: pó de freio e barro, mais pesado que o resto
-    for (const r of RODAS) {
-      for (let i = 0; i < 260; i++) {
-        const a = rnd(0, Math.PI * 2), d = Math.sqrt(Math.random()) * r.r;
-        const x = r.x + Math.cos(a) * d, y = r.y + Math.sin(a) * d;
-        const rr = rnd(4, 17);
-        sctx.fillStyle = `rgba(${48 + Math.random() * 26 | 0},${38 + Math.random() * 20 | 0},26,${rnd(.35, .8)})`;
-        sctx.beginPath(); sctx.arc(x, y, rr, 0, 7); sctx.fill();
-        marcaDureza(x, y, rr + 8, rnd(.35, .62));
-      }
-    }
-
-    sctx.restore();
-
-    medir();
-    inicialPeca.set(restaPeca);
-    prontaPeca.fill(0);
-    pctPeca.fill(0);
-    pctLimpo = 0;
-  }
-
-  function marcaDureza(x, y, r, v) {
-    const i0 = clamp((x - r) / CELULA | 0, 0, COLS - 1), i1 = clamp((x + r) / CELULA | 0, 0, COLS - 1);
-    const j0 = clamp((y - r) / CELULA | 0, 0, ROWS - 1), j1 = clamp((y + r) / CELULA | 0, 0, ROWS - 1);
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const k = j * COLS + i;
-      if (v > dureza[k]) dureza[k] = v;
+    // queda suave: com 1 − d²/R² a borda do leque quase não limpa e sobram
+    // resíduos que travam a peça perto dos 100%
+    const queda = 1 - (d2 / R2) ** 1.6;
+    dureza[i] = Math.max(0, dureza[i] - solta * queda);
+    molhado[i] = Math.min(1, molhado[i] + poder * queda * 3.5);
+    const corte = poder * queda * (1 - dureza[i] * .9);
+    if (corte > 0) {
+      sujeira[i] = Math.max(0, sujeira[i] - corte);
+      if (sujeira[i] < .02) sujeira[i] = 0;   // corta o rastro de resíduo mínimo
+      mexeu = true;
     }
   }
 
-  /** Conta a sujeira que resta em cada peça, numa leitura só do canvas. */
-  function medir() {
-    const d = sctx.getImageData(0, 0, W, H).data;
-    restaPeca.fill(0);
-    for (let i = 0; i < amostraIdx.length; i++) {
-      if (d[amostraIdx[i]] > 18) restaPeca[amostraParte[i]]++;
-    }
+  riscoAtivo = false;
+  if (realista && b.dano && afast < .22) {
+    riscoAtivo = true;
+    danoAcum += (.22 - afast) / .22 * dt * .55;
+    tinta = Math.max(0, 1 - danoAcum / 26);
   }
+  return mexeu;
+}
 
-  /** Atualiza percentuais por peça e o total; devolve as peças recém-concluídas. */
-  function apurar() {
-    medir();
-    const novas = [];
-    let resta = 0, total = 0;
-    for (let p = 1; p <= PARTES.length; p++) {
-      const ini = inicialPeca[p];
-      resta += restaPeca[p]; total += ini;
-      pctPeca[p] = ini > 0 ? clamp(1 - restaPeca[p] / ini, 0, 1) : 1;
-      if (!prontaPeca[p] && pctPeca[p] >= 0.995) { prontaPeca[p] = 1; novas.push(p); }
-    }
-    pctLimpo = total > 0 ? clamp(1 - resta / total, 0, 1) : 0;
-    return novas;
+function emitir(p) {
+  const sabao = BICOS[bico].ang === 'Sabão';
+  for (let i = 0; i < 4; i++) {
+    const a = rnd(0, Math.PI * 2), e = rnd(0, Math.PI * 2), v = rnd(.6, 2.6) * forcaAtual();
+    particulas.push({
+      x: p[0], y: p[1], z: p[2],
+      vx: Math.cos(a) * Math.cos(e) * v, vy: Math.abs(Math.sin(e)) * v * .8 + .5, vz: Math.sin(a) * Math.cos(e) * v,
+      vida: 1, sabao
+    });
   }
+  if (particulas.length > 340) particulas.splice(0, particulas.length - 340);
+}
 
-  /* ─────────── jato ─────────── */
-  const raioAtual = () => BICOS[bico].raio * (0.62 + distancia * 1.15);
-  const forcaAtual = () => 1 - distancia * 0.55;
+/* ══════════ som ══════════ */
 
-  function jato(x, y, dt) {
-    const b = BICOS[bico];
+let ac = null, ruidoNo = null, filtro = null, ganho = null;
+function iniciarSom() {
+  if (ac || !som) return;
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    ruidoNo = ac.createBufferSource(); ruidoNo.buffer = buf; ruidoNo.loop = true;
+    filtro = ac.createBiquadFilter(); filtro.type = 'bandpass';
+    filtro.frequency.value = 1400; filtro.Q.value = .7;
+    ganho = ac.createGain(); ganho.gain.value = 0;
+    ruidoNo.connect(filtro).connect(ganho).connect(ac.destination);
+    ruidoNo.start();
+  } catch { ac = null; }
+}
+function ajustaSom() {
+  if (!ac || !ganho) return;
+  const alvo = jatoAtivo && som ? .05 + forcaAtual() * .06 : 0;
+  ganho.gain.setTargetAtTime(alvo, ac.currentTime, .05);
+  // bate na lataria = mais agudo; jato no vazio = abafado
+  const base = acerto ? 900 : 420;
+  filtro.frequency.setTargetAtTime(base + BICOS[bico].psi * .38 * forcaAtual(), ac.currentTime, .08);
+}
+function dim(freq, vol) {
+  if (!ac || !som) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(.0001, ac.currentTime);
+  g.gain.linearRampToValueAtTime(vol, ac.currentTime + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .3);
+  o.connect(g).connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + .32);
+}
+
+/* ══════════ desenho ══════════ */
+
+let camera = olhar([0, 2, 8], ALVO, [0, 1, 0]), olho = [0, 2, 8], VPm = null;
+
+function tamanho() {
+  const r = cv.getBoundingClientRect();
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  return r.width / r.height;
+}
+
+const auxPos = new Float32Array(4096 * 3), auxCor = new Float32Array(4096 * 4);
+function desenhaAux(modo, n, tam) {
+  gl.useProgram(progSimples);
+  gl.uniformMatrix4fv(gl.getUniformLocation(progSimples, 'uVP'), false, VPm);
+  gl.uniform1f(gl.getUniformLocation(progSimples, 'uTam'), tam || 1);
+  gl.uniform1f(gl.getUniformLocation(progSimples, 'uPonto'), modo === gl.POINTS ? 1 : 0);
+  enviar(bufAux, auxPos.subarray(0, n * 3), gl.DYNAMIC_DRAW);
+  ligar(progSimples, 'aPos', bufAux, 3);
+  enviar(bufAuxCor, auxCor.subarray(0, n * 4), gl.DYNAMIC_DRAW);
+  ligar(progSimples, 'aCor', bufAuxCor, 4);
+  gl.drawArrays(modo, 0, n);
+}
+
+function chao() {
+  let n = 0;
+  const P = (x, y, z, r, g2, b2, a) => {
+    auxPos[n*3] = x; auxPos[n*3+1] = y; auxPos[n*3+2] = z;
+    auxCor[n*4] = r; auxCor[n*4+1] = g2; auxCor[n*4+2] = b2; auxCor[n*4+3] = a; n++;
+  };
+  const S = 16, c = [.20, .215, .23], borda = [.055, .06, .07];
+  P(-S, 0, -S, ...borda, 1); P(S, 0, -S, ...borda, 1); P(0, 0, 0, ...c, 1);
+  P(S, 0, -S, ...borda, 1); P(S, 0, S, ...borda, 1); P(0, 0, 0, ...c, 1);
+  P(S, 0, S, ...borda, 1); P(-S, 0, S, ...borda, 1); P(0, 0, 0, ...c, 1);
+  P(-S, 0, S, ...borda, 1); P(-S, 0, -S, ...borda, 1); P(0, 0, 0, ...c, 1);
+  desenhaAux(gl.TRIANGLES, n);
+
+  // sombra falsa sob o carro
+  n = 0;
+  const NA = 30;
+  P(0, .012, 0, 0, 0, 0, .55);
+  for (let k = 0; k <= NA; k++) {
+    const a = k / NA * Math.PI * 2;
+    P(Math.cos(a) * 1.35, .012, Math.sin(a) * 2.5, 0, 0, 0, 0);
+  }
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  desenhaAux(gl.TRIANGLE_FAN, n);
+  gl.disable(gl.BLEND);
+}
+
+function jatoEParticulas() {
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  gl.depthMask(false);
+
+  if (jatoAtivo && acerto) {
+    // cone de água da ponta da lança até o ponto de impacto
+    const bico3 = [
+      olho[0] + camera.f[0] * 1.1 + camera.s[0] * .55 - camera.u[0] * .42,
+      olho[1] + camera.f[1] * 1.1 + camera.s[1] * .55 - camera.u[1] * .42,
+      olho[2] + camera.f[2] * 1.1 + camera.s[2] * .55 - camera.u[2] * .42
+    ];
     const R = raioAtual();
-    const forca = forcaAtual();
-    // multiplicadores calibrados para o bico verde limpar um ponto em ~0,4 s:
-    // cada frame aplica destination-out, então o que resta cai por (1 − alpha)^frames
-    const poder = b.poder * forca * dt * 12;
-    const solta = b.solta * forca * dt * 3.2;
-
-    const i0 = clamp((x - R) / CELULA | 0, 0, COLS - 1), i1 = clamp((x + R) / CELULA | 0, 0, COLS - 1);
-    const j0 = clamp((y - R) / CELULA | 0, 0, ROWS - 1), j1 = clamp((y + R) / CELULA | 0, 0, ROWS - 1);
-
-    sctx.globalCompositeOperation = 'destination-out';
-    for (let j = j0; j <= j1; j++) {
-      for (let i = i0; i <= i1; i++) {
-        const cx = i * CELULA + CELULA / 2, cy = j * CELULA + CELULA / 2;
-        const d = Math.hypot(cx - x, cy - y);
-        if (d > R) continue;
-        const queda = 1 - (d / R) ** 2;
-        const k = j * COLS + i;
-
-        // o jato vai soltando a sujeira grudada, então nada trava de vez
-        dureza[k] = Math.max(0, dureza[k] - solta * queda);
-
-        const alpha = poder * queda * (1 - dureza[k] * 0.88);
-        if (alpha <= 0.001) continue;
-
-        const g = sctx.createRadialGradient(cx, cy, 0, cx, cy, CELULA * 1.25);
-        g.addColorStop(0, `rgba(0,0,0,${Math.min(1, alpha)})`);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        sctx.fillStyle = g;
-        sctx.beginPath(); sctx.arc(cx, cy, CELULA * 1.25, 0, 7); sctx.fill();
-      }
+    const sabao = BICOS[bico].ang === 'Sabão';
+    const cr = sabao ? [.92, .94, .96] : [.55, .82, .95];
+    let n = 0, NA = 22;
+    for (let k = 0; k < NA; k++) {
+      const a0 = k / NA * Math.PI * 2, a1 = (k + 1) / NA * Math.PI * 2;
+      const p0 = [acerto[0] + (camera.s[0]*Math.cos(a0) + camera.u[0]*Math.sin(a0)) * R,
+                  acerto[1] + (camera.s[1]*Math.cos(a0) + camera.u[1]*Math.sin(a0)) * R,
+                  acerto[2] + (camera.s[2]*Math.cos(a0) + camera.u[2]*Math.sin(a0)) * R];
+      const p1 = [acerto[0] + (camera.s[0]*Math.cos(a1) + camera.u[0]*Math.sin(a1)) * R,
+                  acerto[1] + (camera.s[1]*Math.cos(a1) + camera.u[1]*Math.sin(a1)) * R,
+                  acerto[2] + (camera.s[2]*Math.cos(a1) + camera.u[2]*Math.sin(a1)) * R];
+      const push = (p, a) => {
+        auxPos[n*3] = p[0]; auxPos[n*3+1] = p[1]; auxPos[n*3+2] = p[2];
+        auxCor[n*4] = cr[0]; auxCor[n*4+1] = cr[1]; auxCor[n*4+2] = cr[2]; auxCor[n*4+3] = a; n++;
+      };
+      push(bico3, .30); push(p0, .05); push(p1, .05);
     }
-    sctx.globalCompositeOperation = 'source-over';
-
-    // filme de água por onde o jato passou (recortado na hora de compor)
-    const wg = wctx.createRadialGradient(x, y, 0, x, y, R);
-    wg.addColorStop(0, `rgba(226,242,250,${0.07 * forca})`);
-    wg.addColorStop(1, 'rgba(226,242,250,0)');
-    wctx.fillStyle = wg;
-    wctx.beginPath(); wctx.arc(x, y, R, 0, 7); wctx.fill();
-
-    // dano de pintura: bico 0° encostado, só no modo realista
-    riscoAtivo = false;
-    if (realista && b.dano && distancia < 0.22) {
-      riscoAtivo = true;
-      const intens = (0.22 - distancia) / 0.22;
-      danoAcum += intens * dt * 0.55;
-      dctx.globalCompositeOperation = 'source-over';
-      const g = dctx.createRadialGradient(x, y, 0, x, y, R * 0.85);
-      g.addColorStop(0, `rgba(198,201,204,${0.16 * intens * dt * 9})`);
-      g.addColorStop(1, 'rgba(198,201,204,0)');
-      dctx.fillStyle = g;
-      dctx.save(); silhueta(dctx); dctx.clip();
-      dctx.beginPath(); dctx.arc(x, y, R * 0.85, 0, 7); dctx.fill();
-      dctx.restore();
-      tinta = Math.max(0, 1 - danoAcum / 26);
-    }
+    desenhaAux(gl.TRIANGLES, n);
   }
 
-  /* ─────────── partículas ─────────── */
-  function emitir(x, y) {
-    if (reduzido) return;
-    const b = BICOS[bico];
-    const n = b.ang === 'Sabão' ? 3 : 5;
-    for (let i = 0; i < n; i++) {
-      const a = rnd(0, Math.PI * 2), v = rnd(1.5, 7) * forcaAtual();
-      particulas.push({
-        x: x + rnd(-8, 8), y: y + rnd(-8, 8),
-        vx: Math.cos(a) * v, vy: Math.sin(a) * v - rnd(0, 2),
-        vida: 1, r: rnd(1.5, 4.5),
-        sabao: b.ang === 'Sabão'
-      });
-    }
-    if (particulas.length > 420) particulas.splice(0, particulas.length - 420);
-  }
-
-  function passoParticulas(dt) {
-    for (let i = particulas.length - 1; i >= 0; i--) {
-      const p = particulas[i];
-      p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
-      p.vy += dt * 28;
-      p.vida -= dt * 2.1;
-      if (p.vida <= 0) particulas.splice(i, 1);
-    }
-  }
-
-  function desenhaParticulas(c) {
+  if (particulas.length) {
+    let n = 0;
     for (const p of particulas) {
-      c.fillStyle = p.sabao
-        ? `rgba(245,247,250,${p.vida * .55})`
-        : `rgba(150,220,245,${p.vida * .6})`;
-      c.beginPath(); c.arc(p.x, p.y, p.r * p.vida, 0, 7); c.fill();
+      auxPos[n*3] = p.x; auxPos[n*3+1] = p.y; auxPos[n*3+2] = p.z;
+      const c = p.sabao ? [.95, .96, .98] : [.55, .84, .96];
+      auxCor[n*4] = c[0]; auxCor[n*4+1] = c[1]; auxCor[n*4+2] = c[2];
+      auxCor[n*4+3] = p.vida * .5; n++;
     }
+    desenhaAux(gl.POINTS, n, Math.max(2, 5 * Math.min(devicePixelRatio || 1, 2)));
   }
 
-  /* ─────────── lança e leque ─────────── */
-  function desenhaLanca(c, x, y) {
-    const ox = W - 40, oy = H + 46;              // punho logo abaixo do quadro
-    const ang = Math.atan2(y - oy, x - ox);
-    const R = raioAtual();
-    const comp = clamp(Math.hypot(x - ox, y - oy) - R - 14, 34, 230);
-    const tx = ox + Math.cos(ang) * comp, ty = oy + Math.sin(ang) * comp;
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+}
 
-    // tubo, discreto: a cena é o carro, não o equipamento
-    c.strokeStyle = 'rgba(40,46,52,.9)'; c.lineWidth = 9; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(ox, oy); c.lineTo(tx, ty); c.stroke();
-    c.strokeStyle = 'rgba(120,130,139,.85)'; c.lineWidth = 3;
-    c.beginPath(); c.moveTo(ox, oy); c.lineTo(tx, ty); c.stroke();
-    // bico
-    c.lineCap = 'butt';
-    c.fillStyle = BICOS[bico].cor;
-    c.beginPath(); c.arc(tx, ty, 9, 0, 7); c.fill();
-    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 2; c.stroke();
+/* ══════════ laço ══════════ */
 
-    if (!jatoAtivo) return;
+let ultimo = performance.now(), acumMedida = 0, precisaEnviar = false;
 
-    // leque de água
-    const meio = Math.max(.06, R / Math.max(60, Math.hypot(x - tx, y - ty)));
-    const g = c.createLinearGradient(tx, ty, x, y);
-    const agua = BICOS[bico].ang === 'Sabão' ? '245,247,250' : '150,220,245';
-    g.addColorStop(0, `rgba(${agua},.55)`);
-    g.addColorStop(1, `rgba(${agua},.06)`);
-    c.fillStyle = g;
-    c.beginPath();
-    c.moveTo(tx, ty);
-    c.lineTo(x + Math.cos(ang + Math.PI / 2) * R, y + Math.sin(ang + Math.PI / 2) * R);
-    c.lineTo(x + Math.cos(ang - Math.PI / 2) * R, y + Math.sin(ang - Math.PI / 2) * R);
-    c.closePath(); c.fill();
+function laco(agora) {
+  const dt = Math.min(.05, (agora - ultimo) / 1000);
+  ultimo = agora;
 
-    // brilho do impacto
-    const im = c.createRadialGradient(x, y, 0, x, y, R);
-    im.addColorStop(0, `rgba(${agua},.4)`);
-    im.addColorStop(1, `rgba(${agua},0)`);
-    c.fillStyle = im;
-    c.beginPath(); c.arc(x, y, R, 0, 7); c.fill();
-  }
+  // câmera suavizada
+  giro += (giroAlvo - giro) * Math.min(1, dt * 9);
+  alt += (altAlvo - alt) * Math.min(1, dt * 9);
+  dist += (distAlvo - dist) * Math.min(1, dt * 9);
+  olho = [
+    ALVO[0] + Math.cos(alt) * Math.sin(giro) * dist,
+    ALVO[1] + Math.sin(alt) * dist,
+    ALVO[2] + Math.cos(alt) * Math.cos(giro) * dist
+  ];
+  camera = olhar(olho, ALVO, [0, 1, 0]);
+  const asp = tamanho();
+  VPm = mult(perspectiva(FOV, asp, .1, 80), camera.m);
 
-  function desenhaMira(c, x, y) {
-    const R = raioAtual();
-    c.strokeStyle = 'rgba(232,234,236,.34)'; c.lineWidth = 1.5;
-    c.setLineDash([5, 6]);
-    c.beginPath(); c.arc(x, y, R, 0, 7); c.stroke();
-    c.setLineDash([]);
-  }
-
-  /* ─────────── som ─────────── */
-  let ac = null, ruido = null, filtro = null, ganho = null;
-  function iniciarSom() {
-    if (ac || !som) return;
-    try {
-      ac = new (window.AudioContext || window.webkitAudioContext)();
-      const len = ac.sampleRate * 2;
-      const buf = ac.createBuffer(1, len, ac.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-      ruido = ac.createBufferSource(); ruido.buffer = buf; ruido.loop = true;
-      filtro = ac.createBiquadFilter(); filtro.type = 'bandpass';
-      filtro.frequency.value = 1400; filtro.Q.value = 0.7;
-      ganho = ac.createGain(); ganho.gain.value = 0;
-      ruido.connect(filtro).connect(ganho).connect(ac.destination);
-      ruido.start();
-    } catch { ac = null; }
-  }
-  function ajustaSom() {
-    if (!ac || !ganho) return;
-    const alvo = jatoAtivo && som ? 0.055 + forcaAtual() * 0.06 : 0;
-    ganho.gain.setTargetAtTime(alvo, ac.currentTime, 0.05);
-    if (filtro) filtro.frequency.setTargetAtTime(700 + BICOS[bico].psi * 0.42 * forcaAtual(), ac.currentTime, 0.08);
-  }
-
-  /** Blip curto: peça concluída e acorde de encerramento. */
-  function dim(freq, vol) {
-    if (!ac || !som) return;
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'sine'; o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, ac.currentTime);
-    g.gain.linearRampToValueAtTime(vol, ac.currentTime + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.3);
-    o.connect(g).connect(ac.destination);
-    o.start(); o.stop(ac.currentTime + 0.32);
-  }
-
-  /* ─────────── laço ─────────── */
-  let ultimo = performance.now(), acumMedida = 0;
-
-  function laco(agora) {
-    const dt = Math.min(0.05, (agora - ultimo) / 1000);
-    ultimo = agora;
-
-    if (jatoAtivo && !terminado) {
-      // varre o segmento percorrido desde o quadro anterior: aplicar o jato só
-      // na posição atual deixaria falhas quando o ponteiro anda rápido.
-      // dt é dividido entre os passos, então a água total do quadro não muda —
-      // movimento rápido limpa um risco mais longo e mais fraco, como na vida real.
-      const a = ponteiroAnt ?? ponteiro;
-      const dx = ponteiro.x - a.x, dy = ponteiro.y - a.y;
-      const passos = clamp(Math.ceil(Math.hypot(dx, dy) / (raioAtual() * 0.35)), 1, 24);
+  // mira e jato
+  acerto = null;
+  if (temMira) {
+    const { o, d } = raioDoPonteiro(ponteiroPx.x, ponteiroPx.y);
+    acerto = intersectar(o, d);
+    if (jatoAtivo && acerto && !terminado) {
+      const a = acertoAnt || acerto;
+      const dx = acerto[0]-a[0], dy = acerto[1]-a[1], dz = acerto[2]-a[2];
+      const passos = clamp(Math.ceil(Math.hypot(dx,dy,dz) / (raioAtual() * .4)), 1, 16);
       for (let i = 1; i <= passos; i++) {
-        jato(a.x + dx * i / passos, a.y + dy * i / passos, dt / passos);
+        if (aplicarJato([a[0]+dx*i/passos, a[1]+dy*i/passos, a[2]+dz*i/passos], d, dt/passos)) precisaEnviar = true;
       }
-      ponteiroAnt = { x: ponteiro.x, y: ponteiro.y };
-      emitir(ponteiro.x, ponteiro.y);
+      acertoAnt = acerto.slice();
+      emitir(acerto);
       if (!rodando) { rodando = true; t0 = agora; }
-    } else {
-      riscoAtivo = false;
-      ponteiroAnt = null;
-    }
-    if (rodando && !terminado) tempo = (agora - t0) / 1000;
-
-    passoParticulas(dt);
-
-    // a água escorre: o brilho de molhado some aos poucos
-    wctx.globalCompositeOperation = 'destination-out';
-    wctx.fillStyle = `rgba(0,0,0,${Math.min(.9, dt * 0.9)})`;
-    wctx.fillRect(0, 0, W, H);
-    wctx.globalCompositeOperation = 'source-over';
-
-    // medição periódica do que falta
-    acumMedida += dt;
-    if (acumMedida > 0.16) {
-      acumMedida = 0;
-      for (const p of apurar()) anunciaPeca(p);
-      atualizaHud();
-      if (!terminado && prontaPeca.slice(1).every((v) => v === 1)) finalizar();
-    }
-
-    // desenho
-    fundo(ctx);
-    desenhaCarro(ctx);
-    ctx.drawImage(danoCv, 0, 0);
-    ctx.drawImage(sujo, 0, 0);
-    ctx.save(); regiaoSuja(ctx); ctx.clip(); ctx.drawImage(molhado, 0, 0); ctx.restore();
-
-    if (dicaAte > agora) {
-      const pulso = reduzido ? .5 : (Math.sin(agora / 110) * .5 + .5);
-      xctx.clearRect(0, 0, W, H);
-      xctx.drawImage(sujo, 0, 0);
-      xctx.globalCompositeOperation = 'source-in';
-      xctx.fillStyle = '#4cc4e8';
-      xctx.fillRect(0, 0, W, H);
-      xctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.35 + pulso * 0.45;
-      ctx.drawImage(scratch, 0, 0);
-      ctx.globalAlpha = 1;
-    }
-
-    desenhaParticulas(ctx);
-    if (temPonteiro && !terminado) {
-      if (!jatoAtivo) desenhaMira(ctx, ponteiro.x, ponteiro.y);
-      desenhaLanca(ctx, ponteiro.x, ponteiro.y);
-    }
-
-    ajustaSom();
-    document.getElementById('aviso').classList.toggle('on', riscoAtivo);
-
-    requestAnimationFrame(laco);
+    } else acertoAnt = null;
   }
+  if (!jatoAtivo) { riscoAtivo = false; acertoAnt = null; }
+  if (rodando && !terminado) tempo = (agora - t0) / 1000;
 
-  /* ─────────── HUD ─────────── */
-  const fmtTempo = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
-  function atualizaHud() {
-    document.getElementById('lePct').textContent = `${Math.round(pctLimpo * 100)}%`;
-    document.getElementById('leBarra').style.width = `${pctLimpo * 100}%`;
-    document.getElementById('leTempo').textContent = fmtTempo(tempo);
-    document.getElementById('lePsi').textContent = jatoAtivo ? Math.round(BICOS[bico].psi * forcaAtual()) : 0;
-
-    let feitas = 0;
-    for (let p = 1; p <= PARTES.length; p++) if (prontaPeca[p]) feitas++;
-    document.getElementById('lePecas').textContent = `${feitas}/${PARTES.length}`;
-    document.getElementById('listaCont').textContent =
-      `${feitas} de ${PARTES.length} ${feitas === 1 ? 'pronta' : 'prontas'}`;
-
-    for (let p = 1; p <= PARTES.length; p++) {
-      const el = pecaEls[p];
-      if (!el) continue;
-      el.raiz.classList.toggle('pronta', !!prontaPeca[p]);
-      el.barra.style.width = `${pctPeca[p] * 100}%`;
-      el.pct.textContent = `${Math.floor(pctPeca[p] * 100)}%`;
-    }
+  // partículas e secagem
+  for (let i = particulas.length - 1; i >= 0; i--) {
+    const p = particulas[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.vy -= dt * 5.5; p.vida -= dt * 1.9;
+    if (p.vida <= 0 || p.y < 0) particulas.splice(i, 1);
   }
+  let secou = false;
+  for (let i = 0; i < NV; i++) if (molhado[i] > 0) { molhado[i] = Math.max(0, molhado[i] - dt * .55); secou = true; }
 
-  /** Selo verde que sobe quando uma peça fecha — o retorno do gênero. */
-  function anunciaPeca(p) {
-    const cx = document.getElementById('feito');
-    const b = document.createElement('b');
-    b.textContent = `${PARTES[p - 1]} — limpa`;
-    cx.appendChild(b);
-    setTimeout(() => b.remove(), 1700);
-    dim(880, 0.1); setTimeout(() => dim(1320, 0.12), 90);
-  }
+  if (precisaEnviar) { enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW); precisaEnviar = false; }
+  if (secou) enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
 
-  function finalizar() {
-    terminado = true; jatoAtivo = false;
-    document.getElementById('fimTitulo').textContent =
-      realista && tinta <= 0.9 ? 'Carro lavado (e lixado)' : 'Carro lavado';
-    document.getElementById('fimTexto').textContent = !realista
-      ? `Todas as ${PARTES.length} peças fechadas.`
-      : tinta > 0.995 ? 'Todas as peças fechadas e a lataria intacta. Serviço de profissional.'
-      : tinta > 0.9 ? 'Limpou tudo, mas deixou marca de bico na pintura.'
-      : 'O carro está limpo. A tinta é que não sobreviveu.';
-    document.getElementById('fimTempo').textContent = fmtTempo(tempo);
-    document.getElementById('fimLimpo').textContent = `${Math.round(pctLimpo * 100)}%`;
-    document.getElementById('fimDano').textContent = realista ? `${Math.round(tinta * 100)}%` : '—';
-    document.getElementById('fim').classList.add('on');
-    dim(660, .1); setTimeout(() => dim(880, .1), 110); setTimeout(() => dim(1320, .12), 230);
-  }
-
-  /* ─────────── entrada ─────────── */
-  function paraLogico(e) {
-    const r = cv.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
-  }
-
-  cv.addEventListener('pointerdown', (e) => {
-    if (terminado) return;
-    ponteiro = paraLogico(e); temPonteiro = true; jatoAtivo = true;
-    // captura é otimização, não requisito: lança NotFoundError se o ponteiro
-    // já saiu de cena, e não pode derrubar o acionamento do gatilho
-    try { cv.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
-    iniciarSom();
-    if (ac?.state === 'suspended') ac.resume();
-    document.getElementById('partida').style.display = 'none';
-    e.preventDefault();
-  });
-  cv.addEventListener('pointermove', (e) => { ponteiro = paraLogico(e); temPonteiro = true; });
-  cv.addEventListener('pointerup', () => { jatoAtivo = false; });
-  cv.addEventListener('pointercancel', () => { jatoAtivo = false; });
-  cv.addEventListener('pointerleave', () => { jatoAtivo = false; temPonteiro = false; });
-
-  /* ─────────── painel ─────────── */
-  const elBicos = document.getElementById('bicos');
-  BICOS.forEach((b, i) => {
-    const el = document.createElement('button');
-    el.type = 'button'; el.className = 'bico';
-    el.style.setProperty('--cor', b.cor);
-    el.setAttribute('aria-pressed', String(i === bico));
-    el.innerHTML = `<i class="bico__tip"></i><b>${b.ang}</b><small>${b.nome}</small>`;
-    el.addEventListener('click', () => {
-      bico = i;
-      [...elBicos.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
-      atualizaHud();
-    });
-    elBicos.appendChild(el);
-  });
-
-  const pecaEls = [];
-  const elPecas = document.getElementById('pecas');
-  PARTES.forEach((nome, i) => {
-    const el = document.createElement('div');
-    el.className = 'peca';
-    el.innerHTML = `<span class="peca__nome">${nome}</span>` +
-                   `<span class="peca__pct">0%</span>` +
-                   `<span class="peca__barra"><i></i></span>`;
-    elPecas.appendChild(el);
-    pecaEls[i + 1] = {
-      raiz: el,
-      pct: el.querySelector('.peca__pct'),
-      barra: el.querySelector('.peca__barra i')
-    };
-  });
-
-  const elCores = document.getElementById('cores');
-  PINTURAS.forEach((p, i) => {
-    const el = document.createElement('button');
-    el.type = 'button'; el.className = 'cor';
-    el.style.setProperty('--cor', p.base);
-    el.title = p.nome;
-    el.setAttribute('aria-label', `Pintura ${p.nome}`);
-    el.setAttribute('aria-pressed', String(i === pintura));
-    el.addEventListener('click', () => {
-      pintura = i;
-      [...elCores.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
-    });
-    elCores.appendChild(el);
-  });
-
-  document.getElementById('manual').innerHTML = BICOS.map((b) =>
-    `<li><i style="--cor:${b.cor}"></i><span><b>${b.ang} ${b.nome.toLowerCase()}</b> — ${b.nota}</span></li>`
-  ).join('');
-
-  const elDist = document.getElementById('dist'), elDistVal = document.getElementById('distVal');
-  function lerDist() {
-    distancia = +elDist.value / 100;
-    elDistVal.textContent = `${Math.round(5 + distancia * 55)} cm`;
+  acumMedida += dt;
+  if (acumMedida > .18) {
+    acumMedida = 0;
+    for (const p of apurar()) anunciaPeca(p);
     atualizaHud();
+    if (!terminado && pctLimpo > .5) {
+      let todas = true;
+      for (let p = 1; p <= NP; p++) if (!prontaPeca[p]) { todas = false; break; }
+      if (todas) finalizar();
+    }
   }
-  elDist.addEventListener('input', lerDist);
 
-  document.getElementById('btnSom').addEventListener('click', (e) => {
-    som = !som;
-    e.target.textContent = `Som: ${som ? 'ligado' : 'mudo'}`;
-    e.target.setAttribute('aria-pressed', String(som));
-    if (som) iniciarSom();
-  });
+  // render
+  gl.viewport(0, 0, cv.width, cv.height);
+  gl.clearColor(.043, .055, .067, 1);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  document.getElementById('btnRealista').addEventListener('click', (e) => {
-    realista = !realista;
-    e.target.textContent = `Modo realista: ${realista ? 'on' : 'off'}`;
-    e.target.setAttribute('aria-pressed', String(realista));
-  });
+  chao();
 
-  document.getElementById('btnDica').addEventListener('click', () => {
-    dicaAte = performance.now() + 1600;
-  });
+  gl.useProgram(progCarro);
+  gl.uniformMatrix4fv(gl.getUniformLocation(progCarro, 'uVP'), false, VPm);
+  gl.uniform3fv(gl.getUniformLocation(progCarro, 'uOlho'), new Float32Array(olho));
+  gl.uniform3fv(gl.getUniformLocation(progCarro, 'uPintura'), new Float32Array(PINTURAS[pintura].rgb));
+  const pulso = dicaAte > agora ? (Math.sin(agora / 110) * .5 + .5) : 0;
+  gl.uniform1f(gl.getUniformLocation(progCarro, 'uDica'), pulso);
+  ligar(progCarro, 'aPos', bufPos, 3);
+  ligar(progCarro, 'aNor', bufNor, 3);
+  ligar(progCarro, 'aMat', bufMat, 1);
+  ligar(progCarro, 'aSuj', bufSuj, 1);
+  ligar(progCarro, 'aMol', bufMol, 1);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+  gl.drawElements(gl.TRIANGLES, IDX.length, TIPO_IDX, 0);
 
-  function reiniciar() {
-    gerarSujeira();
-    tinta = 1; danoAcum = 0; tempo = 0; rodando = false; terminado = false;
-    particulas = []; ponteiroAnt = null;
-    dctx.clearRect(0, 0, W, H);
-    document.getElementById('feito').innerHTML = '';
-    document.getElementById('fim').classList.remove('on');
-    document.getElementById('partida').style.display = '';
-    atualizaHud();
-  }
-  document.getElementById('btnNovo').addEventListener('click', reiniciar);
-  document.getElementById('btnDeNovo').addEventListener('click', reiniciar);
+  jatoEParticulas();
 
-  /* ─────────── partida ─────────── */
-  lerDist();
-  desenhaMapa();        // geometria é fixa: mapa e amostras só uma vez
-  prepararAmostras();
-  gerarSujeira();
-  atualizaHud();
+  ajustaSom();
+  document.getElementById('aviso').classList.toggle('on', riscoAtivo);
   requestAnimationFrame(laco);
+}
+
+/* ══════════ HUD ══════════ */
+
+const fmtTempo = (s) => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const pecaEls = [];
+
+function atualizaHud() {
+  document.getElementById('lePct').textContent = `${Math.round(pctLimpo*100)}%`;
+  document.getElementById('leBarra').style.width = `${pctLimpo*100}%`;
+  document.getElementById('leTempo').textContent = fmtTempo(tempo);
+  document.getElementById('lePsi').textContent = jatoAtivo ? Math.round(BICOS[bico].psi * forcaAtual()) : 0;
+  let feitas = 0;
+  for (let p = 1; p <= NP; p++) if (prontaPeca[p]) feitas++;
+  document.getElementById('lePecas').textContent = `${feitas}/${NP}`;
+  document.getElementById('listaCont').textContent = `${feitas} de ${NP} ${feitas === 1 ? 'pronta' : 'prontas'}`;
+  for (let p = 1; p <= NP; p++) {
+    const el = pecaEls[p]; if (!el) continue;
+    el.raiz.classList.toggle('pronta', !!prontaPeca[p]);
+    el.barra.style.width = `${pctPeca[p]*100}%`;
+    el.pct.textContent = `${Math.floor(pctPeca[p]*100)}%`;
+  }
+}
+
+function anunciaPeca(p) {
+  const b = document.createElement('b');
+  b.textContent = `${PARTES[p-1]} — limpa`;
+  document.getElementById('feito').appendChild(b);
+  setTimeout(() => b.remove(), 1700);
+  dim(880, .1); setTimeout(() => dim(1320, .12), 90);
+}
+
+function finalizar() {
+  terminado = true; jatoAtivo = false;
+  document.getElementById('fimTitulo').textContent =
+    realista && tinta <= .9 ? 'Carro lavado (e lixado)' : 'Carro lavado';
+  document.getElementById('fimTexto').textContent = !realista
+    ? `Todas as ${NP} peças fechadas, dos dois lados.`
+    : tinta > .995 ? 'Todas as peças fechadas e a lataria intacta. Serviço de profissional.'
+    : tinta > .9 ? 'Limpou tudo, mas deixou marca de bico na pintura.'
+    : 'O carro está limpo. A tinta é que não sobreviveu.';
+  document.getElementById('fimTempo').textContent = fmtTempo(tempo);
+  document.getElementById('fimLimpo').textContent = `${Math.round(pctLimpo*100)}%`;
+  document.getElementById('fimDano').textContent = realista ? `${Math.round(tinta*100)}%` : '—';
+  document.getElementById('fim').classList.add('on');
+  dim(660, .1); setTimeout(() => dim(880, .1), 110); setTimeout(() => dim(1320, .12), 230);
+}
+
+/* ══════════ entrada ══════════ */
+
+function orbitar(dx, dy) {
+  giroAlvo -= dx * .006;
+  altAlvo = clamp(altAlvo + dy * .005, -.35, 1.25);
+}
+
+cv.addEventListener('pointerdown', (e) => {
+  if (terminado) return;
+  dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  try { cv.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+  document.getElementById('partida').style.display = 'none';
+
+  if (e.button === 2 || dedos.size > 1) {           // botão direito ou dois dedos: girar
+    orbitando = true; jatoAtivo = false;
+    ultOrb = { x: e.clientX, y: e.clientY };
+  } else {
+    ponteiroPx = { x: e.clientX, y: e.clientY };
+    temMira = true; jatoAtivo = true;
+    iniciarSom(); if (ac?.state === 'suspended') ac.resume();
+  }
+  e.preventDefault();
+});
+
+cv.addEventListener('pointermove', (e) => {
+  if (dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (orbitando && ultOrb) {
+    orbitar(e.clientX - ultOrb.x, e.clientY - ultOrb.y);
+    ultOrb = { x: e.clientX, y: e.clientY };
+    return;
+  }
+  ponteiroPx = { x: e.clientX, y: e.clientY };
+  temMira = true;
+});
+
+function soltar(e) {
+  dedos.delete(e.pointerId);
+  if (dedos.size === 0) { orbitando = false; ultOrb = null; jatoAtivo = false; }
+}
+cv.addEventListener('pointerup', soltar);
+cv.addEventListener('pointercancel', soltar);
+cv.addEventListener('pointerleave', (e) => { soltar(e); temMira = false; });
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+cv.addEventListener('wheel', (e) => {
+  distAlvo = clamp(distAlvo + Math.sign(e.deltaY) * .6, 3.4, 13);
+  e.preventDefault();
+}, { passive: false });
+
+const passo = (fn) => { fn(); };
+document.getElementById('orbEsq').addEventListener('click', () => passo(() => giroAlvo -= Math.PI / 6));
+document.getElementById('orbDir').addEventListener('click', () => passo(() => giroAlvo += Math.PI / 6));
+document.getElementById('orbCima').addEventListener('click', () => passo(() => altAlvo = clamp(altAlvo + .22, -.35, 1.25)));
+document.getElementById('orbBaixo').addEventListener('click', () => passo(() => altAlvo = clamp(altAlvo - .22, -.35, 1.25)));
+document.getElementById('orbMais').addEventListener('click', () => passo(() => distAlvo = clamp(distAlvo - .8, 3.4, 13)));
+document.getElementById('orbMenos').addEventListener('click', () => passo(() => distAlvo = clamp(distAlvo + .8, 3.4, 13)));
+
+/* ══════════ painel ══════════ */
+
+const elBicos = document.getElementById('bicos');
+BICOS.forEach((b, i) => {
+  const el = document.createElement('button');
+  el.type = 'button'; el.className = 'bico';
+  el.style.setProperty('--cor', b.cor);
+  el.setAttribute('aria-pressed', String(i === bico));
+  el.innerHTML = `<i class="bico__tip"></i><b>${b.ang}</b><small>${b.nome}</small>`;
+  el.addEventListener('click', () => {
+    bico = i;
+    [...elBicos.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+    atualizaHud();
+  });
+  elBicos.appendChild(el);
+});
+
+const elPecas = document.getElementById('pecas');
+PARTES.forEach((nome, i) => {
+  const el = document.createElement('div');
+  el.className = 'peca';
+  el.innerHTML = `<span class="peca__nome">${nome}</span><span class="peca__pct">0%</span>` +
+                 `<span class="peca__barra"><i></i></span>`;
+  elPecas.appendChild(el);
+  pecaEls[i+1] = { raiz: el, pct: el.querySelector('.peca__pct'), barra: el.querySelector('.peca__barra i') };
+});
+
+const elCores = document.getElementById('cores');
+PINTURAS.forEach((p, i) => {
+  const el = document.createElement('button');
+  el.type = 'button'; el.className = 'cor';
+  el.style.setProperty('--cor', `rgb(${p.rgb.map(v => Math.round(v*255*1.15)).join(',')})`);
+  el.title = p.nome;
+  el.setAttribute('aria-label', `Pintura ${p.nome}`);
+  el.setAttribute('aria-pressed', String(i === pintura));
+  el.addEventListener('click', () => {
+    pintura = i;
+    [...elCores.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+  });
+  elCores.appendChild(el);
+});
+
+document.getElementById('manual').innerHTML = BICOS.map((b) =>
+  `<li><i style="--cor:${b.cor}"></i><span><b>${b.ang} ${b.nome.toLowerCase()}</b> — ${b.nota}</span></li>`).join('');
+
+const elDist = document.getElementById('dist'), elDistVal = document.getElementById('distVal');
+function lerDist() {
+  afast = +elDist.value / 100;
+  elDistVal.textContent = `${Math.round(5 + afast * 55)} cm`;
+  atualizaHud();
+}
+elDist.addEventListener('input', lerDist);
+
+document.getElementById('btnSom').addEventListener('click', (e) => {
+  som = !som;
+  e.target.textContent = `Som: ${som ? 'ligado' : 'mudo'}`;
+  e.target.setAttribute('aria-pressed', String(som));
+  if (som) iniciarSom();
+});
+document.getElementById('btnRealista').addEventListener('click', (e) => {
+  realista = !realista;
+  e.target.textContent = `Modo realista: ${realista ? 'on' : 'off'}`;
+  e.target.setAttribute('aria-pressed', String(realista));
+});
+document.getElementById('btnDica').addEventListener('click', () => { dicaAte = performance.now() + 1600; });
+
+function reiniciar() {
+  sujar();
+  tinta = 1; danoAcum = 0; tempo = 0; rodando = false; terminado = false;
+  particulas = []; acertoAnt = null;
+  document.getElementById('feito').innerHTML = '';
+  document.getElementById('fim').classList.remove('on');
+  document.getElementById('partida').style.display = '';
+  atualizaHud();
+}
+document.getElementById('btnNovo').addEventListener('click', reiniciar);
+document.getElementById('btnDeNovo').addEventListener('click', reiniciar);
+
+/* ══════════ partida ══════════ */
+lerDist();
+sujar();
+atualizaHud();
+requestAnimationFrame(laco);
+
+// ganchos usados só pelos testes automatizados
+window.__cam = (g, a, d) => { giroAlvo = g; altAlvo = a; if (d) distAlvo = d; };
+window.__limpar = (v) => {
+  for (let i = 0; i < NV; i++) if (conta[i]) sujeira[i] = v;
+  enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+  apurar(); atualizaHud();
+};
+window.__diag = () => ({
+  verts: NV, tris: IDX.length / 3, gl2: ehGL2,
+  erroGL: gl.getError(), pct: pctLimpo,
+  jatoAtivo, temMira, orbitando, dedos: dedos.size, bico, acerto: acerto ? acerto.map(v => +v.toFixed(2)) : null,
+  pecas: Array.from({ length: NP }, (_, i) => `${PARTES[i]}=${Math.round(pctPeca[i+1]*100)}%`)
+});
 })();
 </script>
