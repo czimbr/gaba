@@ -83,7 +83,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: 
 /* controles de órbita sobre o visor */
 .orbita {
   position: absolute; right: .625rem; bottom: .625rem;
-  display: grid; grid-template-columns: repeat(3, 2.25rem); grid-template-rows: repeat(2, 2.25rem);
+  display: grid; grid-template-columns: repeat(3, 2.25rem); grid-template-rows: repeat(3, 2.25rem);
   gap: .25rem;
 }
 .orb {
@@ -92,8 +92,10 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: 
   display: grid; place-items: center; padding: 0;
 }
 .orb:hover { background: rgba(42,49,56,.92); }
-.orb--e { grid-area: 2 / 1; } .orb--c { grid-area: 2 / 2; } .orb--d { grid-area: 2 / 3; }
-.orb--u { grid-area: 1 / 2; } .orb--z1 { grid-area: 1 / 1; } .orb--z2 { grid-area: 1 / 3; }
+.orb--e { grid-area: 3 / 1; } .orb--c { grid-area: 3 / 2; } .orb--d { grid-area: 3 / 3; }
+.orb--u { grid-area: 2 / 2; } .orb--z1 { grid-area: 2 / 1; } .orb--z2 { grid-area: 2 / 3; }
+.orb--g { grid-area: 1 / 3; background: rgba(245,197,24,.16); border-color: rgba(245,197,24,.5); color: var(--maquina); }
+.orb--g:hover { background: rgba(245,197,24,.28); }
 
 .aviso {
   position: absolute; left: 50%; transform: translateX(-50%); bottom: .75rem;
@@ -250,6 +252,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: 
       <button type="button" class="orb orb--z1" id="orbMais"  aria-label="Aproximar">+</button>
       <button type="button" class="orb orb--u"  id="orbCima"  aria-label="Olhar de cima">▲</button>
       <button type="button" class="orb orb--z2" id="orbMenos" aria-label="Afastar">−</button>
+      <button type="button" class="orb orb--g"  id="orbLeque" aria-label="Virar o leque do jato" title="Virar o leque">⇕</button>
       <button type="button" class="orb orb--e"  id="orbEsq"   aria-label="Girar para a esquerda">◀</button>
       <button type="button" class="orb orb--c"  id="orbBaixo" aria-label="Olhar de baixo">▼</button>
       <button type="button" class="orb orb--d"  id="orbDir"   aria-label="Girar para a direita">▶</button>
@@ -326,18 +329,19 @@ const ehGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof Web
 /* ══════════ dados do jogo ══════════ */
 
 const BICOS = [
-  // raios em unidades de mundo — o carro tem 4,1 de comprimento.
-  // Calibrados para jogar, não para imitar a cobertura real de um leque.
-  { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', raio: .17, poder: 2.30, solta: .30, psi: 2600, dano: true,
-    nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, no modo realista.' },
-  { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  raio: .34, poder: 1.35, solta: .40, psi: 2100,
-    nota: 'Leque estreito. Bom para crosta de barro no para-lama.' },
-  { ang: '25°',   cor: '#35c47a', nome: 'Verde',    raio: .52, poder: .85,  solta: .45, psi: 1700,
+  // Bico de pressão não faz cone: faz LEQUE — um risco achatado. `leque` é o
+  // comprimento e `espessura` a largura, em unidades de mundo (carro = 4,1).
+  // O 0° é a exceção: jato sólido, redondo e minúsculo.
+  { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', leque: .11, espessura: .11, poder: 2.30, solta: .30, psi: 2600, dano: true,
+    nota: 'Jato-agulha: um ponto só, sem leque. Arranca crosta — e tinta, no modo realista.' },
+  { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  leque: .46, espessura: .11, poder: 1.35, solta: .40, psi: 2100,
+    nota: 'Leque estreito e forte. Um risco fino: bom para barro grudado no para-lama.' },
+  { ang: '25°',   cor: '#35c47a', nome: 'Verde',    leque: .70, espessura: .15, poder: .85,  solta: .45, psi: 1700,
     nota: 'Uso geral. É com ele que se lava a maior parte do carro.' },
-  { ang: '40°',   cor: '#e8eaec', nome: 'Branco',   raio: .76, poder: .52,  solta: .50, psi: 1300,
-    nota: 'Leque largo e suave. Enxágue e acabamento sem risco.' },
-  { ang: 'Sabão', cor: '#2a3138', nome: 'Preto',    raio: .98, poder: .05,  solta: 1.6,  psi: 500,
-    nota: 'Quase não limpa: aplica detergente e solta a sujeira para o enxágue.' }
+  { ang: '40°',   cor: '#e8eaec', nome: 'Branco',   leque: 1.02, espessura: .21, poder: .52,  solta: .50, psi: 1300,
+    nota: 'Leque largo e suave. Cobre muita área por passada, sem risco de marcar.' },
+  { ang: 'Sabão', cor: '#2a3138', nome: 'Preto',    leque: 1.15, espessura: .62, poder: .05,  solta: 1.6,  psi: 500,
+    nota: 'Jorro largo que quase não limpa: aplica detergente e solta a sujeira para o enxágue.' }
 ];
 
 const PINTURAS = [
@@ -356,7 +360,19 @@ const MAT_PINTURA = 0, MAT_VIDRO = 1, MAT_PNEU = 2, MAT_RODA = 3;
 
 /* ══════════ malha do carro ══════════ */
 
-const pos = [], nor = [], mat = [], parte = [], idxs = [];
+// Atlas de UV. Cada ilha é uma região com folga em volta, para o pincel de
+// uma não sangrar na outra. O corpo é uma varredura, então desenrola inteiro
+// num retângulo; cada roda vira um alvo — disco no meio, banda de rodagem no anel.
+const AT = {
+  corpo:  { x: .003, y: .004, w: .994, h: .610 },
+  tampaF: { x: .006, y: .632, w: .150, h: .100 },
+  tampaT: { x: .176, y: .632, w: .150, h: .100 },
+  rodas: [ { x: .004, y: .752, w: .240, h: .240 }, { x: .254, y: .752, w: .240, h: .240 },
+           { x: .504, y: .752, w: .240, h: .240 }, { x: .754, y: .752, w: .240, h: .240 } ]
+};
+const ILHA_CORPO = 1, ILHA_TAMPA_F = 2, ILHA_TAMPA_T = 3, ILHA_RODA = 4; // 4..7
+
+const pos = [], nor = [], mat = [], parte = [], uvs = [], ilha = [], idxs = [];
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -386,7 +402,7 @@ const NZ = 54, NT = 46;
 const Z0 = -2.05, Z1 = 2.05;
 
 function secao(z, k) {                            // ponto k do contorno na estação z
-  const th = k / NT * Math.PI * 2;
+  const th = k / NT * Math.PI * 2 - Math.PI / 2;  // começa embaixo: a costura fica escondida
   const n = 5.2;                                  // superelipse bem boxy: lataria plana lê como carro
   const c = Math.cos(th), s = Math.sin(th);
   const cx = Math.sign(c) * Math.abs(c) ** (2 / n);
@@ -423,14 +439,15 @@ function partePara(x, y, z, ny, vidro) {
 
 function construirCorpo() {
   const base = pos.length / 3;
+  const COLS = NT + 1;              // coluna extra repete a primeira só para fechar o UV
   const anel = [];
   for (let i = 0; i < NZ; i++) {
     const z = Z0 + (Z1 - Z0) * (i / (NZ - 1));
     const linha = [];
-    for (let k = 0; k < NT; k++) linha.push(secao(z, k));
+    for (let k = 0; k < COLS; k++) linha.push(secao(z, k % NT));
     anel.push(linha);
   }
-  for (let i = 0; i < NZ; i++) for (let k = 0; k < NT; k++) {
+  for (let i = 0; i < NZ; i++) for (let k = 0; k < COLS; k++) {
     const p = anel[i][k];
     // normal por diferenças finitas nos vizinhos
     const a = anel[Math.min(NZ - 1, i + 1)][k], b = anel[Math.max(0, i - 1)][k];
@@ -445,26 +462,35 @@ function construirCorpo() {
     pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]);
     mat.push(vidro ? MAT_VIDRO : MAT_PINTURA);
     parte.push(partePara(p[0], p[1], p[2], n[1], vidro));
+    uvs.push(AT.corpo.x + (k / NT) * AT.corpo.w,
+             AT.corpo.y + (i / (NZ - 1)) * AT.corpo.h);
+    ilha.push(ILHA_CORPO);
   }
   for (let i = 0; i < NZ - 1; i++) for (let k = 0; k < NT; k++) {
-    const k2 = (k + 1) % NT;
-    const a = base + i * NT + k, b = base + i * NT + k2;
-    const c = base + (i + 1) * NT + k, d = base + (i + 1) * NT + k2;
+    const a = base + i * COLS + k, b = base + i * COLS + k + 1;
+    const c = base + (i + 1) * COLS + k, d = base + (i + 1) * COLS + k + 1;
     idxs.push(a, c, b, b, c, d);
   }
   // tampas nas duas pontas
-  for (const [i, pid, ny] of [[0, 7, 0], [NZ - 1, 6, 0]]) {
+  for (const [i, pid, reg, il] of [[0, 7, AT.tampaT, ILHA_TAMPA_T], [NZ - 1, 6, AT.tampaF, ILHA_TAMPA_F]]) {
     const z = Z0 + (Z1 - Z0) * (i / (NZ - 1));
     const nz = i === 0 ? -1 : 1;
-    let cxm = 0, cym = 0;
+    let cxm = 0, cym = 0, rmax = 0;
     for (let k = 0; k < NT; k++) { cxm += anel[i][k][0]; cym += anel[i][k][1]; }
     cxm /= NT; cym /= NT;
+    for (let k = 0; k < NT; k++) rmax = Math.max(rmax, Math.hypot(anel[i][k][0]-cxm, anel[i][k][1]-cym));
+    const uvTampa = (px, py) => [
+      reg.x + reg.w * (.5 + .46 * (px - cxm) / rmax),
+      reg.y + reg.h * (.5 + .46 * (py - cym) / rmax)
+    ];
     const cen = pos.length / 3;
     pos.push(cxm, cym, z); nor.push(0, 0, nz); mat.push(MAT_PINTURA); parte.push(pid);
+    uvs.push(...uvTampa(cxm, cym)); ilha.push(il);
     const aro = pos.length / 3;
     for (let k = 0; k < NT; k++) {
       const p = anel[i][k];
       pos.push(p[0], p[1], z); nor.push(0, 0, nz); mat.push(MAT_PINTURA); parte.push(pid);
+      uvs.push(...uvTampa(p[0], p[1])); ilha.push(il);
     }
     for (let k = 0; k < NT; k++) {
       const k2 = (k + 1) % NT;
@@ -474,37 +500,48 @@ function construirCorpo() {
   }
 }
 
-function construirRoda(cx, cz, pid) {
-  const R = .43, r = .23, larg = .14, NA = 26, NR = 3;
+/** A roda desenrola como um alvo: disco no miolo, banda de rodagem no anel. */
+function construirRoda(cx, cz, pid, ir) {
+  const R = .43, r = .31, larg = .14, NA = 26, NR = 4;   // aro maior: com aro pequeno a roda lia como rosca
   const lado = Math.sign(cx);
   const xExt = cx + lado * larg, xInt = cx - lado * larg;
+  const reg = AT.rodas[ir], il = ILHA_RODA + ir;
+  const cu = reg.x + reg.w / 2, cv = reg.y + reg.h / 2;
+  const su = reg.w / 2, sv = reg.h / 2;
+  const COLS = NA + 1;              // coluna extra fecha o UV da banda
   const base = pos.length / 3;
 
   // banda de rodagem
   for (let j = 0; j < 2; j++) {
     const x = j === 0 ? xInt : xExt;
-    for (let k = 0; k < NA; k++) {
-      const a = k / NA * Math.PI * 2;
+    const anelR = .70 + .26 * j;
+    for (let k = 0; k < COLS; k++) {
+      const a = (k % NA) / NA * Math.PI * 2;
       const y = R + Math.sin(a) * R, z = cz + Math.cos(a) * R;
       pos.push(x, y, z); nor.push(0, Math.sin(a), Math.cos(a));
       mat.push(MAT_PNEU); parte.push(pid);
+      const au = k / NA * Math.PI * 2;
+      uvs.push(cu + Math.cos(au) * su * anelR, cv + Math.sin(au) * sv * anelR);
+      ilha.push(il);
     }
   }
   for (let k = 0; k < NA; k++) {
-    const k2 = (k + 1) % NA;
-    const a = base + k, b = base + k2, c = base + NA + k, d = base + NA + k2;
+    const a = base + k, b = base + k + 1, c = base + COLS + k, d = base + COLS + k + 1;
     idxs.push(a, b, c, b, d, c);
   }
   // face externa: pneu em volta e roda no meio
   const cen = pos.length / 3;
   pos.push(xExt, R, cz); nor.push(lado, 0, 0); mat.push(MAT_RODA); parte.push(pid);
+  uvs.push(cu, cv); ilha.push(il);
   for (let ring = 1; ring <= NR; ring++) {
-    const rr = R * ring / NR;
+    const rr = R * ring / NR, f = .58 * ring / NR;
     for (let k = 0; k < NA; k++) {
       const a = k / NA * Math.PI * 2;
       pos.push(xExt, R + Math.sin(a) * rr, cz + Math.cos(a) * rr);
       nor.push(lado, 0, 0);
       mat.push(rr > r ? MAT_PNEU : MAT_RODA); parte.push(pid);
+      uvs.push(cu + Math.cos(a) * su * f, cv + Math.sin(a) * sv * f);
+      ilha.push(il);
     }
   }
   for (let k = 0; k < NA; k++) {
@@ -520,28 +557,65 @@ function construirRoda(cx, cz, pid) {
 }
 
 construirCorpo();
-construirRoda(-.86, 1.38, 8);   // dianteira esquerda
-construirRoda(.86, 1.38, 9);    // dianteira direita
-construirRoda(-.86, -1.40, 10); // traseira esquerda
-construirRoda(.86, -1.40, 11);  // traseira direita
+construirRoda(-.86, 1.38, 8, 0);   // dianteira esquerda
+construirRoda(.86, 1.38, 9, 1);    // dianteira direita
+construirRoda(-.86, -1.40, 10, 2); // traseira esquerda
+construirRoda(.86, -1.40, 11, 3);  // traseira direita
 
 const VP = new Float32Array(pos), VN = new Float32Array(nor);
 const VM = new Float32Array(mat), VPA = new Uint8Array(parte);
+const VUV = new Float32Array(uvs), VIL = new Uint8Array(ilha);
 const IDX = ehGL2 ? new Uint32Array(idxs) : new Uint16Array(idxs);
 const NV = VP.length / 3;
 
-// O que não dá para alcançar não pode contar, senão a peça nunca fecha:
-// a barriga do carro e a face interna das rodas, virada para a lataria.
-const conta = new Uint8Array(NV);
-for (let i = 0; i < NV; i++) {
-  const roda = VPA[i] >= 8;
-  const interna = roda && Math.abs(VP[i * 3]) < .86;
-  conta[i] = (VN[i * 3 + 1] < -.45 || interna) ? 0 : 1;
-}
-
-const sujeira = new Float32Array(NV);
-const dureza  = new Float32Array(NV);
+// Molhado segue por vértice: é sinal de baixa frequência e não precisa de textura.
 const molhado = new Float32Array(NV);
+
+/* ══════════ sujeira em textura ══════════
+   Antes a sujeira morava nos vértices — uma amostra a cada ~7,6 cm, o que
+   impedia risco nítido. Agora mora numa textura de 1536², ~2,7 mm por texel.
+   O buffer é dono do dado na CPU: isso permite pintar com a mesma lógica de
+   pincel já validada, manter as somas por peça enquanto pinta (progresso
+   exato, sem ler de volta da GPU) e enviar só o retângulo alterado.        */
+
+const TEX = 1536, TEX2 = TEX * TEX;
+const sujBuf = new Uint8Array(TEX2);
+const durBuf = new Uint8Array(TEX2);
+const meta   = new Uint8Array(TEX2);   // bits 0-3 peça · 4-6 ilha · 7 alcançável
+const altura = new Uint8Array(TEX2);   // y do texel, para a sujeira pesar embaixo
+
+const M_PARTE = (m) => m & 15;
+const M_ILHA  = (m) => (m >> 4) & 7;
+
+/** Rasteriza os triângulos em espaço UV para saber a que peça cada texel pertence. */
+function construirMapas() {
+  const c = document.createElement('canvas'); c.width = TEX; c.height = TEX;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  for (let t = 0; t < IDX.length; t += 3) {
+    const i0 = IDX[t], i1 = IDX[t+1], i2 = IDX[t+2];
+    const ny = (VN[i0*3+1] + VN[i1*3+1] + VN[i2*3+1]) / 3;
+    const cxm = (VP[i0*3] + VP[i1*3] + VP[i2*3]) / 3;
+    const cym = (VP[i0*3+1] + VP[i1*3+1] + VP[i2*3+1]) / 3;
+    const p = VPA[i0], il = VIL[i0];
+    // o que não dá para alcançar não pode contar, senão a peça nunca fecha:
+    // a barriga do carro e a face interna das rodas
+    const alcanca = ny >= -.45 && !(p >= 8 && Math.abs(cxm) < .86);
+    const r = p | (il << 4) | (alcanca ? 128 : 0);
+    const cor = `rgb(${r},${Math.round(clamp(cym / 1.7, 0, 1) * 255)},0)`;
+    g.fillStyle = cor; g.strokeStyle = cor; g.lineWidth = 1.7;  // fecha vãos da rasterização
+    g.beginPath();
+    g.moveTo(VUV[i0*2]*TEX, VUV[i0*2+1]*TEX);
+    g.lineTo(VUV[i1*2]*TEX, VUV[i1*2+1]*TEX);
+    g.lineTo(VUV[i2*2]*TEX, VUV[i2*2+1]*TEX);
+    g.closePath(); g.fill(); g.stroke();
+  }
+  const d = g.getImageData(0, 0, TEX, TEX).data;
+  for (let i = 0; i < TEX2; i++) {
+    if (d[i*4+3] < 128) continue;
+    meta[i] = d[i*4];
+    altura[i] = d[i*4+1];
+  }
+}
 
 /* ══════════ WebGL ══════════ */
 
@@ -549,7 +623,7 @@ const cab = (fonte) => ehGL2 ? '#version 300 es\n' + fonte : fonte;
 const V = ehGL2 ? 'in' : 'attribute', S = ehGL2 ? 'out' : 'varying', SF = ehGL2 ? 'in' : 'varying';
 const SAIDA = ehGL2 ? 'out vec4 corFinal;\n' : '';
 const POR = ehGL2 ? 'corFinal' : 'gl_FragColor';
-const TEX = ehGL2 ? 'texture' : 'texture2D';
+const FTEX = ehGL2 ? 'texture' : 'texture2D';   // TEX já é o tamanho da textura
 
 function shader(tipo, fonte) {
   const s = gl.createShader(tipo);
@@ -569,16 +643,17 @@ function programa(vs, fs) {
 const progCarro = programa(`
 precision highp float;
 ${V} vec3 aPos; ${V} vec3 aNor; ${V} float aMat;
-${V} float aSuj; ${V} float aMol;
+${V} vec2 aUV; ${V} float aMol;
 uniform mat4 uVP;
-${S} vec3 vPos; ${S} vec3 vNor; ${S} float vMat; ${S} float vSuj; ${S} float vMol;
+${S} vec3 vPos; ${S} vec3 vNor; ${S} float vMat; ${S} vec2 vUV; ${S} float vMol;
 void main() {
-  vPos = aPos; vNor = aNor; vMat = aMat; vSuj = aSuj; vMol = aMol;
+  vPos = aPos; vNor = aNor; vMat = aMat; vUV = aUV; vMol = aMol;
   gl_Position = uVP * vec4(aPos, 1.0);
 }`, `
 precision highp float;
-${SF} vec3 vPos; ${SF} vec3 vNor; ${SF} float vMat; ${SF} float vSuj; ${SF} float vMol;
+${SF} vec3 vPos; ${SF} vec3 vNor; ${SF} float vMat; ${SF} vec2 vUV; ${SF} float vMol;
 uniform vec3 uOlho; uniform vec3 uPintura; uniform float uDica;
+uniform sampler2D uSuj;
 ${SAIDA}
 
 // hash sem sin(): o seno é caro em GPU móvel e este é o trecho mais quente
@@ -598,6 +673,7 @@ float ruido(vec3 p) {
 }
 
 void main() {
+  float vSuj = ${FTEX}(uSuj, vUV).r;
   vec3 N = normalize(vNor);
   vec3 Vd = normalize(uOlho - vPos);
 
@@ -655,7 +731,7 @@ void main() {
 
 // ─── buffers ───
 const bufPos = gl.createBuffer(), bufNor = gl.createBuffer(), bufMat = gl.createBuffer();
-const bufSuj = gl.createBuffer(), bufMol = gl.createBuffer(), bufIdx = gl.createBuffer();
+const bufUV = gl.createBuffer(), bufMol = gl.createBuffer(), bufIdx = gl.createBuffer();
 
 function enviar(buf, dados, uso) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -664,8 +740,47 @@ function enviar(buf, dados, uso) {
 enviar(bufPos, VP, gl.STATIC_DRAW);
 enviar(bufNor, VN, gl.STATIC_DRAW);
 enviar(bufMat, VM, gl.STATIC_DRAW);
-enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+enviar(bufUV, VUV, gl.STATIC_DRAW);
 enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
+
+// ── textura de sujeira, um canal ──
+const FMT_INT = ehGL2 ? gl.R8 : gl.LUMINANCE;
+const FMT = ehGL2 ? gl.RED : gl.LUMINANCE;
+const texSuj = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texSuj);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+gl.texImage2D(gl.TEXTURE_2D, 0, FMT_INT, TEX, TEX, 0, FMT, gl.UNSIGNED_BYTE, null);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+const enviarTexturaToda = () => {
+  gl.bindTexture(gl.TEXTURE_2D, texSuj);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, TEX, TEX, FMT, gl.UNSIGNED_BYTE, sujBuf);
+};
+
+// Só o retângulo alterado sobe por quadro. Copiado para um buffer contíguo
+// porque UNPACK_ROW_LENGTH não existe em WebGL1.
+let sx0 = 0, sy0 = 0, sx1 = -1, sy1 = -1;
+let recorte = new Uint8Array(256 * 256);
+function marcarSujo(x0, y0, x1, y1) {
+  if (sx1 < sx0) { sx0 = x0; sy0 = y0; sx1 = x1; sy1 = y1; return; }
+  if (x0 < sx0) sx0 = x0; if (y0 < sy0) sy0 = y0;
+  if (x1 > sx1) sx1 = x1; if (y1 > sy1) sy1 = y1;
+}
+function enviarSujo() {
+  if (sx1 < sx0) return;
+  const w = sx1 - sx0 + 1, h = sy1 - sy0 + 1;
+  if (recorte.length < w * h) recorte = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const o = (sy0 + y) * TEX + sx0;
+    recorte.set(sujBuf.subarray(o, o + w), y * w);
+  }
+  gl.bindTexture(gl.TEXTURE_2D, texSuj);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, sx0, sy0, w, h, FMT, gl.UNSIGNED_BYTE, recorte.subarray(0, w * h));
+  sx1 = -1; sx0 = 0;
+}
 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, IDX, gl.STATIC_DRAW);
 const TIPO_IDX = ehGL2 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
@@ -716,7 +831,7 @@ let giroAlvo = giro, altAlvo = alt, distAlvo = dist;
 
 let bico = 2, afast = .35, pintura = 0;
 let jatoAtivo = false, temMira = false, ponteiroPx = { x: 0, y: 0 };
-let acerto = null, acertoAnt = null;
+let acerto = null, uvAnt = null, ilhaAnt = 0, lequeVert = false, molhouAgora = false;
 let orbitando = false, ultOrb = null, dedos = new Map();
 let realista = false, tinta = 1, danoAcum = 0, riscoAtivo = false;
 let t0 = 0, tempo = 0, rodando = false, terminado = false;
@@ -730,38 +845,51 @@ const prontaPeca = new Uint8Array(NP + 1);
 const somaInicial = new Float64Array(NP + 1);
 let totalInicial = 1;
 
+// Ruído numa grade pequena, amostrado bilinear: gerar 2,36 M de texels com
+// trigonometria por texel travava o botão de "sujar de novo".
+const RN = 128;
+const grade = new Float32Array(RN * RN);
+function amostraRuido(fx, fy) {
+  const gx = fx * (RN - 1), gy = fy * (RN - 1);
+  const x0 = gx | 0, y0 = gy | 0, tx = gx - x0, ty = gy - y0;
+  const x1 = x0 + 1 < RN ? x0 + 1 : x0, y1 = y0 + 1 < RN ? y0 + 1 : y0;
+  const a = grade[y0*RN+x0] + (grade[y0*RN+x1] - grade[y0*RN+x0]) * tx;
+  const b = grade[y1*RN+x0] + (grade[y1*RN+x1] - grade[y1*RN+x0]) * tx;
+  return a + (b - a) * ty;
+}
+
 function sujar() {
-  const semente = Math.random() * 100;
-  for (let i = 0; i < NV; i++) {
-    if (!conta[i]) { sujeira[i] = 0; dureza[i] = 0; molhado[i] = 0; continue; }
-    const y = VP[i * 3 + 1], z = VP[i * 3 + 2];
-    const baixo = clamp(1 - (y - .3) / 1.15, 0, 1);
-    const n = Math.abs(Math.sin(VP[i*3] * 3.1 + semente) * Math.cos(z * 2.3 - semente) * Math.sin(y * 5.7));
-    sujeira[i] = clamp(.62 + baixo * .38 + n * .22, 0, 1);
-    dureza[i] = clamp(.06 + baixo * .5 + (n > .78 ? .38 : 0), 0, .93);
-    molhado[i] = 0;
+  for (let i = 0; i < grade.length; i++) grade[i] = Math.random();
+  somaPeca.fill(0); somaInicial.fill(0); totalInicial = 0;
+
+  for (let i = 0; i < TEX2; i++) {
+    const m = meta[i];
+    if (!(m & 128)) { sujBuf[i] = 0; durBuf[i] = 0; continue; }
+    const y = altura[i] / 255 * 1.7;
+    const baixo = clamp(1 - (y - .3) / 1.2, 0, 1);
+    const n = amostraRuido((i % TEX) / TEX, ((i / TEX) | 0) / TEX);
+    const s = clamp(.58 + baixo * .34 + n * .28, 0, 1) * 255;
+    sujBuf[i] = s | 0;
+    durBuf[i] = (clamp(.05 + baixo * .46 + (n > .74 ? .3 : 0), 0, .92) * 255) | 0;
+    const p = M_PARTE(m);
+    somaPeca[p] += sujBuf[i];
+    somaInicial[p] += sujBuf[i];
+    totalInicial += sujBuf[i];
   }
-  // o progresso é relativo ao quanto estava sujo: começa em 0%, não em 12%
-  somaInicial.fill(0); totalInicial = 0;
-  for (let i = 0; i < NV; i++) {
-    if (!conta[i]) continue;
-    somaInicial[VPA[i]] += sujeira[i];
-    totalInicial += sujeira[i];
-  }
-  enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+
+  molhado.fill(0);
   enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
+  enviarTexturaToda();
   prontaPeca.fill(0); pctPeca.fill(0);
   apurar();
 }
 
 let pctLimpo = 0;
 function apurar() {
-  somaPeca.fill(0);
+  // as somas por peça são mantidas durante a pintura, então apurar é só dividir:
+  // progresso exato, sem varrer a textura nem ler de volta da GPU
   let s = 0;
-  for (let i = 0; i < NV; i++) {
-    if (!conta[i]) continue;
-    somaPeca[VPA[i]] += sujeira[i]; s += sujeira[i];
-  }
+  for (let p = 1; p <= NP; p++) s += somaPeca[p];
   const novas = [];
   for (let p = 1; p <= NP; p++) {
     pctPeca[p] = somaInicial[p] > 0 ? clamp(1 - somaPeca[p] / somaInicial[p], 0, 1) : 1;
@@ -791,11 +919,13 @@ function raioDoPonteiro(px, py) {
 
 // Além do ponto, guarda qual peça está sob a mira: é o que orienta o jogador
 // em 3D, onde as peças não têm contorno visível.
-let parteMirada = 0;
+let parteMirada = 0, acertoUV = null, escU = 400, escV = 400, ilhaMira = 0;
+// derivadas do mapeamento no ponto de impacto: metros por unidade de u e de v
+const PU = [1, 0, 0], PV = [0, 0, 1], NRM = [0, 1, 0];
 
 function intersectar(ro, rd) {
-  let melhor = Infinity, ponto = null;
-  parteMirada = 0;
+  let melhor = Infinity, ponto = null, mt = -1, mv = 0, mw = 0;
+  parteMirada = 0; acertoUV = null;
   for (let t = 0; t < IDX.length; t += 3) {
     const i0 = IDX[t] * 3, i1 = IDX[t+1] * 3, i2 = IDX[t+2] * 3;
     const ax = VP[i0], ay = VP[i0+1], az = VP[i0+2];
@@ -815,52 +945,146 @@ function intersectar(ro, rd) {
     if (dd > .02 && dd < melhor) {
       melhor = dd;
       ponto = [ro[0]+rd[0]*dd, ro[1]+rd[1]*dd, ro[2]+rd[2]*dd];
-      parteMirada = VPA[IDX[t]];
+      mt = t; mv = v; mw = w;
     }
+  }
+  if (mt >= 0) {
+    const i0 = IDX[mt], i1 = IDX[mt+1], i2 = IDX[mt+2];
+    parteMirada = VPA[i0];
+    ilhaMira = VIL[i0];
+    const bu = 1 - mv - mw;
+    acertoUV = [VUV[i0*2]*bu + VUV[i1*2]*mv + VUV[i2*2]*mw,
+                VUV[i0*2+1]*bu + VUV[i1*2+1]*mv + VUV[i2*2+1]*mw];
+
+    // Jacobiano do mapeamento: quantos texels por metro ao longo de cada eixo
+    // do UV. Sem isso o pincel sairia esticado onde a textura estica.
+    const e1x = VP[i1*3]-VP[i0*3], e1y = VP[i1*3+1]-VP[i0*3+1], e1z = VP[i1*3+2]-VP[i0*3+2];
+    const e2x = VP[i2*3]-VP[i0*3], e2y = VP[i2*3+1]-VP[i0*3+1], e2z = VP[i2*3+2]-VP[i0*3+2];
+    const d1u = VUV[i1*2]-VUV[i0*2], d1v = VUV[i1*2+1]-VUV[i0*2+1];
+    const d2u = VUV[i2*2]-VUV[i0*2], d2v = VUV[i2*2+1]-VUV[i0*2+1];
+    const det = d1u*d2v - d2u*d1v;
+    if (Math.abs(det) > 1e-10) {
+      const q = 1 / det;
+      PU[0] = (e1x*d2v - e2x*d1v)*q; PU[1] = (e1y*d2v - e2y*d1v)*q; PU[2] = (e1z*d2v - e2z*d1v)*q;
+      PV[0] = (e2x*d1u - e1x*d2u)*q; PV[1] = (e2y*d1u - e1y*d2u)*q; PV[2] = (e2z*d1u - e1z*d2u)*q;
+      const lu = Math.hypot(PU[0], PU[1], PU[2]), lv = Math.hypot(PV[0], PV[1], PV[2]);
+      if (lu > 1e-6) escU = TEX / lu;
+      if (lv > 1e-6) escV = TEX / lv;
+    }
+    NRM[0] = VN[i0*3]; NRM[1] = VN[i0*3+1]; NRM[2] = VN[i0*3+2];
   }
   return ponto;
 }
 
 /* ══════════ jato ══════════ */
 
-const raioAtual = () => BICOS[bico].raio * (.62 + afast * 1.15);
+// Meia-extensão do leque em metros, para o alcance 3D dos efeitos e do molhado
+const raioAtual = () => Math.max(BICOS[bico].leque, BICOS[bico].espessura) * .5 * (.7 + afast * .9);
 const forcaAtual = () => 1 - afast * .55;
 
-function aplicarJato(p, rd, dt) {
-  const b = BICOS[bico], R = raioAtual(), forca = forcaAtual();
-  const poder = b.poder * forca * dt * 4.5;
-  const solta = b.solta * forca * dt * 2.6;
-  const R2 = R * R;
+const BX0 = Math.round(AT.corpo.x * TEX), BW = Math.round(AT.corpo.w * TEX);
+
+/** Pinta o leque em espaço UV. Elipse: comprida no eixo do leque, fina no outro. */
+function pintarLeque(u, v, dt) {
+  const b = BICOS[bico], forca = forcaAtual();
+  const esticar = .7 + afast * .9;                 // longe: leque mais aberto e mais fraco
+  const poder = b.poder * forca * dt * 6.4 * 255;
+  const solta = b.solta * forca * dt * 3.4 * 255;
+
+  // O leque é definido em 3D (na tela) e projetado para o UV: os eixos do UV
+  // não correspondem a direções fixas do carro — em `u` ele dá a volta na seção,
+  // então orientar pelo UV punha o leque de pé quando devia estar deitado.
+  const f3 = lequeVert ? camera.u : camera.s;
+  // f3 projetado no plano tangente, resolvido em coordenadas (du, dv)
+  const auu = PU[0]*PU[0]+PU[1]*PU[1]+PU[2]*PU[2];
+  const avv = PV[0]*PV[0]+PV[1]*PV[1]+PV[2]*PV[2];
+  const auv = PU[0]*PV[0]+PU[1]*PV[1]+PU[2]*PV[2];
+  const bu = f3[0]*PU[0]+f3[1]*PU[1]+f3[2]*PU[2];
+  const bv = f3[0]*PV[0]+f3[1]*PV[1]+f3[2]*PV[2];
+  const dd = auu*avv - auv*auv;
+  let ex = 1, ey = 0, porMetro = escU;
+  if (Math.abs(dd) > 1e-12) {
+    const ca = (bu*avv - bv*auv) / dd, cb = (bv*auu - bu*auv) / dd;
+    const tx = ca * TEX, ty = cb * TEX;
+    const L = Math.hypot(tx, ty);
+    if (L > 1e-6) { ex = tx / L; ey = ty / L; porMetro = L; }  // f3 é unitário: L = texels/m
+  }
+  // escala perpendicular: média geométrica basta, a anisotropia já entrou em `porMetro`
+  const perpMetro = Math.sqrt(escU * escV);
+
+  let A = clamp((lequeVert ? b.espessura : b.leque) * .5 * esticar * porMetro, 1.5, 500);
+  let B = clamp((lequeVert ? b.leque : b.espessura) * .5 * esticar * perpMetro, 1.5, 500);
+  if (b.leque === b.espessura) B = A;                  // 0°: ponto redondo
+
+  const cx = u * TEX, cy = v * TEX;
+  const hx = Math.hypot(A * ex, B * ey), hy = Math.hypot(A * ey, B * ex);
+  const ix0 = Math.floor(cx - hx), ix1 = Math.ceil(cx + hx);
+  const iy0 = Math.max(0, Math.floor(cy - hy)), iy1 = Math.min(TEX - 1, Math.ceil(cy + hy));
+  const envolve = ilhaMira === ILHA_CORPO;        // o corpo dá a volta: envolve na costura
   let mexeu = false;
 
-  for (let i = 0; i < NV; i++) {
-    if (!conta[i]) continue;
-    const dx = VP[i*3] - p[0], dy = VP[i*3+1] - p[1], dz = VP[i*3+2] - p[2];
-    const d2 = dx*dx + dy*dy + dz*dz;
-    if (d2 > R2) continue;
-    // só o lado voltado para o jato: senão a água atravessaria a lataria
-    if (VN[i*3]*rd[0] + VN[i*3+1]*rd[1] + VN[i*3+2]*rd[2] > -.05) continue;
+  for (let y = iy0; y <= iy1; y++) {
+    const py = y - cy;
+    const linha = y * TEX;
+    for (let xr = ix0; xr <= ix1; xr++) {
+      const px = xr - cx;
+      const t1 = (px * ex + py * ey) / A;          // ao longo do leque
+      const t2 = (-px * ey + py * ex) / B;         // perpendicular
+      const q = t1 * t1 + t2 * t2;
+      if (q > 1) continue;
+      let x = xr;
+      if (envolve) x = ((xr - BX0) % BW + BW) % BW + BX0;
+      else if (x < 0 || x >= TEX) continue;
+      const i = linha + x;
+      const m = meta[i];
+      if (!(m & 128) || M_ILHA(m) !== ilhaMira) continue;
 
-    // queda suave: com 1 − d²/R² a borda do leque quase não limpa e sobram
-    // resíduos que travam a peça perto dos 100%
-    const queda = 1 - (d2 / R2) ** 1.6;
-    dureza[i] = Math.max(0, dureza[i] - solta * queda);
-    molhado[i] = Math.min(1, molhado[i] + poder * queda * 3.5);
-    const corte = poder * queda * (1 - dureza[i] * .9);
-    if (corte > 0) {
-      sujeira[i] = Math.max(0, sujeira[i] - corte);
-      if (sujeira[i] < .02) sujeira[i] = 0;   // corta o rastro de resíduo mínimo
-      mexeu = true;
+      // perfil achatado: a lâmina de um leque tem pressão quase uniforme, e um
+      // perfil gaussiano deixava faixa fraca na borda que travava a peça
+      const queda = 1 - q ** 2.6;
+      const d = durBuf[i] - solta * queda;
+      durBuf[i] = d > 0 ? d | 0 : 0;
+      const corte = poder * queda * (1 - (durBuf[i] / 255) * .9);
+      if (corte <= 0) continue;
+      const antes = sujBuf[i];
+      if (!antes) continue;
+      let dep = antes - corte;
+      if (dep < 6) dep = 0;                        // corta o rastro de resíduo mínimo
+      const novo = dep | 0;
+      if (novo !== antes) {
+        sujBuf[i] = novo;
+        somaPeca[M_PARTE(m)] -= antes - novo;
+        mexeu = true;
+      }
     }
   }
+  if (mexeu) marcarSujo(Math.max(0, envolve ? BX0 : ix0), iy0,
+                        Math.min(TEX - 1, envolve ? BX0 + BW - 1 : ix1), iy1);
+  return mexeu;
+}
 
+/** O brilho de molhado continua por vértice — é sinal grosso, não precisa de textura. */
+function molhar(p, R) {
+  const R2 = R * R;
+  let mud = false;
+  for (let i = 0; i < NV; i++) {
+    const dx = VP[i*3]-p[0], dy = VP[i*3+1]-p[1], dz = VP[i*3+2]-p[2];
+    const d2 = dx*dx + dy*dy + dz*dz;
+    if (d2 > R2) continue;
+    const nv = Math.min(1, molhado[i] + (1 - d2 / R2) * .55);
+    if (nv > molhado[i]) { molhado[i] = nv; mud = true; }
+  }
+  return mud;
+}
+
+function conferirDano(dt) {
+  const b = BICOS[bico];
   riscoAtivo = false;
   if (realista && b.dano && afast < .22) {
     riscoAtivo = true;
     danoAcum += (.22 - afast) / .22 * dt * .55;
     tinta = Math.max(0, 1 - danoAcum / 26);
   }
-  return mexeu;
 }
 
 function emitir(p) {
@@ -975,18 +1199,23 @@ function jatoEParticulas() {
       olho[1] + camera.f[1] * 1.1 + camera.s[1] * .55 - camera.u[1] * .42,
       olho[2] + camera.f[2] * 1.1 + camera.s[2] * .55 - camera.u[2] * .42
     ];
-    const R = raioAtual();
-    const sabao = BICOS[bico].ang === 'Sabão';
+    // o desenho do jato acompanha o leque do bico: achatado, não cônico
+    const bq = BICOS[bico], esticar = .7 + afast * .9;
+    const rA = (lequeVert ? bq.espessura : bq.leque) * .5 * esticar;
+    const rB = (lequeVert ? bq.leque : bq.espessura) * .5 * esticar;
+    const sabao = bq.ang === 'Sabão';
     const cr = sabao ? [.92, .94, .96] : [.55, .82, .95];
     let n = 0, NA = 22;
     for (let k = 0; k < NA; k++) {
       const a0 = k / NA * Math.PI * 2, a1 = (k + 1) / NA * Math.PI * 2;
-      const p0 = [acerto[0] + (camera.s[0]*Math.cos(a0) + camera.u[0]*Math.sin(a0)) * R,
-                  acerto[1] + (camera.s[1]*Math.cos(a0) + camera.u[1]*Math.sin(a0)) * R,
-                  acerto[2] + (camera.s[2]*Math.cos(a0) + camera.u[2]*Math.sin(a0)) * R];
-      const p1 = [acerto[0] + (camera.s[0]*Math.cos(a1) + camera.u[0]*Math.sin(a1)) * R,
-                  acerto[1] + (camera.s[1]*Math.cos(a1) + camera.u[1]*Math.sin(a1)) * R,
-                  acerto[2] + (camera.s[2]*Math.cos(a1) + camera.u[2]*Math.sin(a1)) * R];
+      const c0 = Math.cos(a0) * rA, s0 = Math.sin(a0) * rB;
+      const c1 = Math.cos(a1) * rA, s1 = Math.sin(a1) * rB;
+      const p0 = [acerto[0] + camera.s[0]*c0 + camera.u[0]*s0,
+                  acerto[1] + camera.s[1]*c0 + camera.u[1]*s0,
+                  acerto[2] + camera.s[2]*c0 + camera.u[2]*s0];
+      const p1 = [acerto[0] + camera.s[0]*c1 + camera.u[0]*s1,
+                  acerto[1] + camera.s[1]*c1 + camera.u[1]*s1,
+                  acerto[2] + camera.s[2]*c1 + camera.u[2]*s1];
       const push = (p, a) => {
         auxPos[n*3] = p[0]; auxPos[n*3+1] = p[1]; auxPos[n*3+2] = p[2];
         auxCor[n*4] = cr[0]; auxCor[n*4+1] = cr[1]; auxCor[n*4+2] = cr[2]; auxCor[n*4+3] = a; n++;
@@ -1037,19 +1266,22 @@ function laco(agora) {
   if (temMira) {
     const { o, d } = raioDoPonteiro(ponteiroPx.x, ponteiroPx.y);
     acerto = intersectar(o, d);
-    if (jatoAtivo && acerto && !terminado) {
-      const a = acertoAnt || acerto;
-      const dx = acerto[0]-a[0], dy = acerto[1]-a[1], dz = acerto[2]-a[2];
-      const passos = clamp(Math.ceil(Math.hypot(dx,dy,dz) / (raioAtual() * .4)), 1, 16);
+    if (jatoAtivo && acerto && acertoUV && !terminado) {
+      // interpola em espaço UV: pintar só no ponto atual deixaria falhas
+      const a = (uvAnt && ilhaAnt === ilhaMira) ? uvAnt : acertoUV;
+      const du = acertoUV[0] - a[0], dv = acertoUV[1] - a[1];
+      const passos = clamp(Math.ceil(Math.hypot(du * TEX, dv * TEX) / 16), 1, 24);
       for (let i = 1; i <= passos; i++) {
-        if (aplicarJato([a[0]+dx*i/passos, a[1]+dy*i/passos, a[2]+dz*i/passos], d, dt/passos)) precisaEnviar = true;
+        if (pintarLeque(a[0] + du * i / passos, a[1] + dv * i / passos, dt / passos)) precisaEnviar = true;
       }
-      acertoAnt = acerto.slice();
+      uvAnt = acertoUV.slice(); ilhaAnt = ilhaMira;
+      conferirDano(dt);
+      if (molhar(acerto, raioAtual() * 1.5)) molhouAgora = true;
       emitir(acerto);
       if (!rodando) { rodando = true; t0 = agora; }
-    } else acertoAnt = null;
+    } else { uvAnt = null; riscoAtivo = false; }
   }
-  if (!jatoAtivo) { riscoAtivo = false; acertoAnt = null; }
+  if (!jatoAtivo) { riscoAtivo = false; uvAnt = null; }
   if (rodando && !terminado) tempo = (agora - t0) / 1000;
 
   // partículas e secagem
@@ -1062,7 +1294,7 @@ function laco(agora) {
   let secou = false;
   for (let i = 0; i < NV; i++) if (molhado[i] > 0) { molhado[i] = Math.max(0, molhado[i] - dt * .55); secou = true; }
 
-  if (precisaEnviar) { enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW); precisaEnviar = false; }
+  if (precisaEnviar) { enviarSujo(); precisaEnviar = false; }
   if (secou) enviar(bufMol, molhado, gl.DYNAMIC_DRAW);
 
   acumMedida += dt;
@@ -1094,7 +1326,10 @@ function laco(agora) {
   ligar(progCarro, 'aPos', bufPos, 3);
   ligar(progCarro, 'aNor', bufNor, 3);
   ligar(progCarro, 'aMat', bufMat, 1);
-  ligar(progCarro, 'aSuj', bufSuj, 1);
+  ligar(progCarro, 'aUV', bufUV, 2);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texSuj);
+  gl.uniform1i(gl.getUniformLocation(progCarro, 'uSuj'), 0);
   ligar(progCarro, 'aMol', bufMol, 1);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
   gl.drawElements(gl.TRIANGLES, IDX.length, TIPO_IDX, 0);
@@ -1230,6 +1465,11 @@ document.getElementById('orbCima').addEventListener('click', () => passo(() => a
 document.getElementById('orbBaixo').addEventListener('click', () => passo(() => altAlvo = clamp(altAlvo - .22, -.35, 1.25)));
 document.getElementById('orbMais').addEventListener('click', () => passo(() => distAlvo = clamp(distAlvo - .8, 3.4, 13)));
 document.getElementById('orbMenos').addEventListener('click', () => passo(() => distAlvo = clamp(distAlvo + .8, 3.4, 13)));
+document.getElementById('orbLeque').addEventListener('click', (e) => {
+  lequeVert = !lequeVert;
+  e.currentTarget.textContent = lequeVert ? '⇔' : '⇕';
+  e.currentTarget.title = `Leque ${lequeVert ? 'vertical' : 'horizontal'}`;
+});
 
 /* ══════════ painel ══════════ */
 
@@ -1300,7 +1540,7 @@ document.getElementById('btnDica').addEventListener('click', () => { dicaAte = p
 function reiniciar() {
   sujar();
   tinta = 1; danoAcum = 0; tempo = 0; rodando = false; terminado = false;
-  particulas = []; acertoAnt = null;
+  particulas = []; uvAnt = null;
   document.getElementById('feito').innerHTML = '';
   document.getElementById('fim').classList.remove('on');
   document.getElementById('partida').style.display = '';
@@ -1311,6 +1551,7 @@ document.getElementById('btnDeNovo').addEventListener('click', reiniciar);
 
 /* ══════════ partida ══════════ */
 lerDist();
+construirMapas();   // geometria é fixa: o mapa de peças em UV só uma vez
 sujar();
 atualizaHud();
 requestAnimationFrame(laco);
@@ -1318,8 +1559,15 @@ requestAnimationFrame(laco);
 // ganchos usados só pelos testes automatizados
 window.__cam = (g, a, d) => { giroAlvo = g; altAlvo = a; if (d) distAlvo = d; };
 window.__limpar = (v) => {
-  for (let i = 0; i < NV; i++) if (conta[i]) sujeira[i] = v;
-  enviar(bufSuj, sujeira, gl.DYNAMIC_DRAW);
+  const b = (clamp(v, 0, 1) * 255) | 0;
+  somaPeca.fill(0);
+  for (let i = 0; i < TEX2; i++) {
+    const m = meta[i];
+    if (!(m & 128)) continue;
+    sujBuf[i] = b;
+    somaPeca[M_PARTE(m)] += b;
+  }
+  enviarTexturaToda();
   apurar(); atualizaHud();
 };
 window.__diag = () => ({
