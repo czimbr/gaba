@@ -115,6 +115,54 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
 .placar span { display: block; font: 500 .5625rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--concreto); margin-bottom: .25rem; }
 .placar b { font: 700 1.125rem/1 var(--mono); font-variant-numeric: tabular-nums; }
 
+/* aviso flutuante de peça concluída */
+.feito {
+  position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: .375rem;
+  pointer-events: none;
+}
+.feito b {
+  background: rgba(53,196,122,.16); border: 1px solid var(--ok); color: #7fe3ac;
+  border-radius: 999px; padding: .375rem .875rem;
+  font: 600 .75rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  white-space: nowrap;
+  animation: sobe 1.6s ease-out forwards;
+}
+@keyframes sobe {
+  0%   { opacity: 0; transform: translateY(10px) scale(.94); }
+  16%  { opacity: 1; transform: translateY(0) scale(1); }
+  74%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px); }
+}
+@media (prefers-reduced-motion: reduce) { .feito b { animation: none; opacity: 1; } }
+
+/* ─────────── lista de peças ─────────── */
+.lista {
+  background: var(--aco); border: 1px solid var(--borda);
+  border-radius: var(--r); padding: .875rem;
+}
+.lista__topo { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .625rem; }
+.lista h2, .lista__cont {
+  margin: 0; font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--concreto);
+}
+.lista__cont { color: var(--agua); font-variant-numeric: tabular-nums; }
+
+.pecas { display: grid; gap: .375rem; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+.peca {
+  background: var(--aco-alto); border: 1px solid var(--borda); border-radius: 9px;
+  padding: .4375rem .5625rem; display: grid; gap: .3125rem;
+  grid-template-columns: 1fr auto; align-items: center;
+}
+.peca__nome { font-size: .75rem; color: var(--giz); }
+.peca__pct { font: 600 .6875rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--concreto); }
+.peca__barra { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+.peca__barra i { display: block; height: 100%; width: 0%; background: var(--agua); transition: width .2s linear; }
+.peca.pronta { border-color: rgba(53,196,122,.55); background: rgba(53,196,122,.08); }
+.peca.pronta .peca__pct { color: var(--ok); }
+.peca.pronta .peca__barra i { background: var(--ok); }
+.peca.pronta .peca__nome::after { content: " ✓"; color: var(--ok); }
+
 /* ─────────── painel ─────────── */
 .painel {
   background: var(--aco); border: 1px solid var(--borda); border-radius: var(--r);
@@ -206,6 +254,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     </div>
     <div class="acoes">
       <button type="button" class="btn" id="btnSom" aria-pressed="true">Som: ligado</button>
+      <button type="button" class="btn" id="btnRealista" aria-pressed="false">Modo realista: off</button>
       <button type="button" class="btn" id="btnDica">Onde falta?</button>
       <button type="button" class="btn btn--forte" id="btnNovo">Sujar de novo</button>
     </div>
@@ -229,10 +278,12 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
         <b id="leTempo">0:00</b>
       </div>
       <div class="leitura">
-        <span>Pintura</span>
-        <b id="leDano">100%</b>
+        <span>Peças</span>
+        <b id="lePecas">0/8</b>
       </div>
     </div>
+
+    <div class="feito" id="feito" aria-live="polite"></div>
 
     <div class="aviso" id="aviso">Bico 0° perto demais — descascando a tinta</div>
     <div class="partida" id="partida"><span>Segure o clique para acionar o gatilho</span></div>
@@ -250,6 +301,14 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
       </div>
     </div>
   </div>
+
+  <section class="lista">
+    <div class="lista__topo">
+      <h2>Peças</h2>
+      <span class="lista__cont" id="listaCont">0 de 8 prontas</span>
+    </div>
+    <div class="pecas" id="pecas"></div>
+  </section>
 
   <div class="painel">
     <div class="bloco">
@@ -273,7 +332,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     <ul id="manual"></ul>
   </section>
 
-  <p class="rodape">A codificação de cor dos bicos é a usada em máquinas de pressão reais. O bico vermelho de 0° concentra todo o jato num ponto e realmente arranca tinta se chegar perto — aqui isso também acontece.</p>
+  <p class="rodape">Sem cronômetro cobrando e sem como perder: o jogo é ir fechando as oito peças. A codificação de cor dos bicos é a usada em máquinas de pressão reais — e o vermelho de 0°, que concentra todo o jato num ponto, arranca tinta de verdade se chegar perto. Ligue o <b>modo realista</b> se quiser que isso também valha aqui.</p>
 </div>
 
 <script>
@@ -287,7 +346,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   /* ─────────── bicos ─────────── */
   const BICOS = [
     { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', raio: 26,  poder: 2.30, solta: 0.30, psi: 2600, dano: true,
-      nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, se chegar perto.' },
+      nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, no modo realista.' },
     { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  raio: 42,  poder: 1.35, solta: 0.40, psi: 2100,
       nota: 'Leque estreito. Bom para crosta de barro no para-lama.' },
     { ang: '25°',   cor: '#35c47a', nome: 'Verde',    raio: 62,  poder: 0.85, solta: 0.45, psi: 1700,
@@ -305,6 +364,12 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     { nome: 'Grafite',  base: '#3a4046', escuro: '#22272b', claro: '#5f686f' }
   ];
 
+  // Cada peça é medida por conta própria — é esse o laço do gênero:
+  // não se limpa "o carro", se vai riscando uma lista.
+  const PARTES = ['Frente e capô', 'Porta dianteira', 'Porta traseira', 'Traseira',
+                  'Teto', 'Vidros', 'Roda dianteira', 'Roda traseira'];
+  const RODAS = [{ x: 312, y: 436, r: 66 }, { x: 700, y: 436, r: 66 }];
+
   const CELULA = 20;
   const COLS = Math.ceil(W / CELULA), ROWS = Math.ceil(H / CELULA);
 
@@ -312,8 +377,13 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   let bico = 2, distancia = 0.35, pintura = 0;
   let jatoAtivo = false, ponteiro = { x: W / 2, y: H / 2 }, ponteiroAnt = null, temPonteiro = false;
   let dureza = new Float32Array(COLS * ROWS);
-  let sujeiraInicial = 1, sujeiraAtual = 1, pctLimpo = 0;
-  let tinta = 1, danoAcum = 0, riscoAtivo = false;
+  let pctLimpo = 0;
+  let amostraIdx = new Uint32Array(0), amostraParte = new Uint8Array(0);
+  const inicialPeca = new Float64Array(PARTES.length + 1);
+  const restaPeca = new Float64Array(PARTES.length + 1);
+  const pctPeca = new Float64Array(PARTES.length + 1);
+  const prontaPeca = new Uint8Array(PARTES.length + 1);
+  let tinta = 1, danoAcum = 0, riscoAtivo = false, realista = false;
   let t0 = 0, tempo = 0, rodando = false, terminado = false;
   let dicaAte = 0, som = true;
   let particulas = [];
@@ -324,6 +394,10 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   const sctx = sujo.getContext('2d', { willReadFrequently: true });
   const danoCv = document.createElement('canvas'); danoCv.width = W; danoCv.height = H;
   const dctx = danoCv.getContext('2d');
+  const mapaCv = document.createElement('canvas'); mapaCv.width = W; mapaCv.height = H;
+  const pctx = mapaCv.getContext('2d', { willReadFrequently: true });
+  const molhado = document.createElement('canvas'); molhado.width = W; molhado.height = H;
+  const wctx = molhado.getContext('2d');
   const scratch = document.createElement('canvas'); scratch.width = W; scratch.height = H;
   const xctx = scratch.getContext('2d');
 
@@ -331,8 +405,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
   /* ─────────── silhueta do carro ─────────── */
-  function silhueta(c) {
-    c.beginPath();
+  function caminhoCorpo(c) {
     c.moveTo(150, 398);
     c.lineTo(152, 366);
     c.quadraticCurveTo(155, 346, 182, 339);
@@ -353,6 +426,57 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     c.lineTo(168, 428);
     c.quadraticCurveTo(150, 424, 150, 398);
     c.closePath();
+  }
+
+  function silhueta(c) { c.beginPath(); caminhoCorpo(c); }
+
+  /** Corpo mais as rodas: as rodas também sujam e também contam como peça. */
+  function regiaoSuja(c) {
+    c.beginPath();
+    caminhoCorpo(c);
+    for (const r of RODAS) { c.moveTo(r.x + r.r, r.y); c.arc(r.x, r.y, r.r, 0, Math.PI * 2); }
+  }
+
+  /**
+   * Mapa de peças: cada região pintada com o seu índice no canal vermelho.
+   * Lido uma vez para saber a que peça pertence cada pixel amostrado.
+   */
+  function desenhaMapa() {
+    pctx.clearRect(0, 0, W, H);
+    const id = (i) => `rgb(${i},0,0)`;
+
+    pctx.fillStyle = id(7); pctx.beginPath(); pctx.arc(RODAS[0].x, RODAS[0].y, RODAS[0].r, 0, 7); pctx.fill();
+    pctx.fillStyle = id(8); pctx.beginPath(); pctx.arc(RODAS[1].x, RODAS[1].y, RODAS[1].r, 0, 7); pctx.fill();
+
+    pctx.save(); silhueta(pctx); pctx.clip();
+    pctx.fillStyle = id(1); pctx.fillRect(0, 0, 302, H);
+    pctx.fillStyle = id(2); pctx.fillRect(302, 0, 198, H);
+    pctx.fillStyle = id(3); pctx.fillRect(500, 0, 200, H);
+    pctx.fillStyle = id(4); pctx.fillRect(700, 0, W - 700, H);
+    pctx.fillStyle = id(5); pctx.fillRect(302, 0, 398, 266);   // teto por cima das portas
+    pctx.fillStyle = id(6);                                     // vidros por último
+    pctx.beginPath(); pctx.moveTo(316,322); pctx.lineTo(398,258); pctx.lineTo(494,258); pctx.lineTo(494,322); pctx.closePath(); pctx.fill();
+    pctx.beginPath(); pctx.moveTo(508,258); pctx.lineTo(620,258); pctx.lineTo(700,322); pctx.lineTo(508,322); pctx.closePath(); pctx.fill();
+    pctx.restore();
+  }
+
+  /**
+   * Pré-calcula onde amostrar. Guardar o deslocamento do byte de alfa e a peça
+   * evita reler o mapa a cada medição — só o canvas de sujeira é lido.
+   */
+  function prepararAmostras() {
+    const m = pctx.getImageData(0, 0, W, H).data;
+    const idx = [], par = [];
+    for (let y = 0; y < H; y += 3) {
+      for (let x = 0; x < W; x += 3) {
+        const o = (y * W + x) * 4;
+        if (m[o + 3] === 0) continue;
+        const p = m[o];
+        if (p >= 1 && p <= PARTES.length) { idx.push(o + 3); par.push(p); }
+      }
+    }
+    amostraIdx = new Uint32Array(idx);
+    amostraParte = new Uint8Array(par);
   }
 
   function roda(c, cx, cy) {
@@ -455,17 +579,19 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     dctx.clearRect(0, 0, W, H);
     dureza.fill(0);
 
+    wctx.clearRect(0, 0, W, H);
+
     sctx.save();
-    silhueta(sctx);
+    regiaoSuja(sctx);
     sctx.clip();
 
     // camada de encardido: cobre tudo e escurece para baixo
-    const base = sctx.createLinearGradient(0, 236, 0, 452);
+    const base = sctx.createLinearGradient(0, 236, 0, 508);
     base.addColorStop(0, 'rgba(96,78,54,.42)');
-    base.addColorStop(.55, 'rgba(84,66,44,.62)');
-    base.addColorStop(1, 'rgba(58,44,28,.86)');
+    base.addColorStop(.45, 'rgba(84,66,44,.62)');
+    base.addColorStop(1, 'rgba(58,44,28,.88)');
     sctx.fillStyle = base;
-    sctx.fillRect(0, 230, W, 230);
+    sctx.fillRect(0, 230, W, 285);
 
     // manchas de poeira assentada
     for (let i = 0; i < 320; i++) {
@@ -547,10 +673,24 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
       marcaDureza(x, y, r + 10, .92);
     }
 
+    // rodas: pó de freio e barro, mais pesado que o resto
+    for (const r of RODAS) {
+      for (let i = 0; i < 260; i++) {
+        const a = rnd(0, Math.PI * 2), d = Math.sqrt(Math.random()) * r.r;
+        const x = r.x + Math.cos(a) * d, y = r.y + Math.sin(a) * d;
+        const rr = rnd(4, 17);
+        sctx.fillStyle = `rgba(${48 + Math.random() * 26 | 0},${38 + Math.random() * 20 | 0},26,${rnd(.35, .8)})`;
+        sctx.beginPath(); sctx.arc(x, y, rr, 0, 7); sctx.fill();
+        marcaDureza(x, y, rr + 8, rnd(.35, .62));
+      }
+    }
+
     sctx.restore();
 
-    sujeiraInicial = medirSujeira() || 1;
-    sujeiraAtual = sujeiraInicial;
+    medir();
+    inicialPeca.set(restaPeca);
+    prontaPeca.fill(0);
+    pctPeca.fill(0);
     pctLimpo = 0;
   }
 
@@ -563,15 +703,28 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     }
   }
 
-  function medirSujeira() {
+  /** Conta a sujeira que resta em cada peça, numa leitura só do canvas. */
+  function medir() {
     const d = sctx.getImageData(0, 0, W, H).data;
-    let n = 0;
-    for (let y = 0; y < H; y += 4) {
-      for (let x = 0; x < W; x += 4) {
-        if (d[(y * W + x) * 4 + 3] > 18) n++;
-      }
+    restaPeca.fill(0);
+    for (let i = 0; i < amostraIdx.length; i++) {
+      if (d[amostraIdx[i]] > 18) restaPeca[amostraParte[i]]++;
     }
-    return n;
+  }
+
+  /** Atualiza percentuais por peça e o total; devolve as peças recém-concluídas. */
+  function apurar() {
+    medir();
+    const novas = [];
+    let resta = 0, total = 0;
+    for (let p = 1; p <= PARTES.length; p++) {
+      const ini = inicialPeca[p];
+      resta += restaPeca[p]; total += ini;
+      pctPeca[p] = ini > 0 ? clamp(1 - restaPeca[p] / ini, 0, 1) : 1;
+      if (!prontaPeca[p] && pctPeca[p] >= 0.995) { prontaPeca[p] = 1; novas.push(p); }
+    }
+    pctLimpo = total > 0 ? clamp(1 - resta / total, 0, 1) : 0;
+    return novas;
   }
 
   /* ─────────── jato ─────────── */
@@ -614,9 +767,16 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     }
     sctx.globalCompositeOperation = 'source-over';
 
-    // dano de pintura: bico 0° encostado
+    // filme de água por onde o jato passou (recortado na hora de compor)
+    const wg = wctx.createRadialGradient(x, y, 0, x, y, R);
+    wg.addColorStop(0, `rgba(226,242,250,${0.07 * forca})`);
+    wg.addColorStop(1, 'rgba(226,242,250,0)');
+    wctx.fillStyle = wg;
+    wctx.beginPath(); wctx.arc(x, y, R, 0, 7); wctx.fill();
+
+    // dano de pintura: bico 0° encostado, só no modo realista
     riscoAtivo = false;
-    if (b.dano && distancia < 0.22) {
+    if (realista && b.dano && distancia < 0.22) {
       riscoAtivo = true;
       const intens = (0.22 - distancia) / 0.22;
       danoAcum += intens * dt * 0.55;
@@ -743,6 +903,18 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     if (filtro) filtro.frequency.setTargetAtTime(700 + BICOS[bico].psi * 0.42 * forcaAtual(), ac.currentTime, 0.08);
   }
 
+  /** Blip curto: peça concluída e acorde de encerramento. */
+  function dim(freq, vol) {
+    if (!ac || !som) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, ac.currentTime);
+    g.gain.linearRampToValueAtTime(vol, ac.currentTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.3);
+    o.connect(g).connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + 0.32);
+  }
+
   /* ─────────── laço ─────────── */
   let ultimo = performance.now(), acumMedida = 0;
 
@@ -772,15 +944,19 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
 
     passoParticulas(dt);
 
+    // a água escorre: o brilho de molhado some aos poucos
+    wctx.globalCompositeOperation = 'destination-out';
+    wctx.fillStyle = `rgba(0,0,0,${Math.min(.9, dt * 0.9)})`;
+    wctx.fillRect(0, 0, W, H);
+    wctx.globalCompositeOperation = 'source-over';
+
     // medição periódica do que falta
     acumMedida += dt;
     if (acumMedida > 0.16) {
       acumMedida = 0;
-      sujeiraAtual = medirSujeira();
-      pctLimpo = clamp(1 - sujeiraAtual / sujeiraInicial, 0, 1);
+      for (const p of apurar()) anunciaPeca(p);
       atualizaHud();
-      // 0,995 para o painel já marcar 100% no instante em que a lavagem fecha
-      if (pctLimpo >= 0.995 && !terminado) finalizar();
+      if (!terminado && prontaPeca.slice(1).every((v) => v === 1)) finalizar();
     }
 
     // desenho
@@ -788,6 +964,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     desenhaCarro(ctx);
     ctx.drawImage(danoCv, 0, 0);
     ctx.drawImage(sujo, 0, 0);
+    ctx.save(); regiaoSuja(ctx); ctx.clip(); ctx.drawImage(molhado, 0, 0); ctx.restore();
 
     if (dicaAte > agora) {
       const pulso = reduzido ? .5 : (Math.sin(agora / 110) * .5 + .5);
@@ -821,24 +998,47 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     document.getElementById('lePct').textContent = `${Math.round(pctLimpo * 100)}%`;
     document.getElementById('leBarra').style.width = `${pctLimpo * 100}%`;
     document.getElementById('leTempo').textContent = fmtTempo(tempo);
-    const psi = jatoAtivo ? Math.round(BICOS[bico].psi * forcaAtual()) : 0;
-    document.getElementById('lePsi').textContent = psi;
-    const dn = document.getElementById('leDano');
-    dn.textContent = `${Math.round(tinta * 100)}%`;
-    dn.classList.toggle('risco', tinta < 0.995);
+    document.getElementById('lePsi').textContent = jatoAtivo ? Math.round(BICOS[bico].psi * forcaAtual()) : 0;
+
+    let feitas = 0;
+    for (let p = 1; p <= PARTES.length; p++) if (prontaPeca[p]) feitas++;
+    document.getElementById('lePecas').textContent = `${feitas}/${PARTES.length}`;
+    document.getElementById('listaCont').textContent =
+      `${feitas} de ${PARTES.length} ${feitas === 1 ? 'pronta' : 'prontas'}`;
+
+    for (let p = 1; p <= PARTES.length; p++) {
+      const el = pecaEls[p];
+      if (!el) continue;
+      el.raiz.classList.toggle('pronta', !!prontaPeca[p]);
+      el.barra.style.width = `${pctPeca[p] * 100}%`;
+      el.pct.textContent = `${Math.floor(pctPeca[p] * 100)}%`;
+    }
+  }
+
+  /** Selo verde que sobe quando uma peça fecha — o retorno do gênero. */
+  function anunciaPeca(p) {
+    const cx = document.getElementById('feito');
+    const b = document.createElement('b');
+    b.textContent = `${PARTES[p - 1]} — limpa`;
+    cx.appendChild(b);
+    setTimeout(() => b.remove(), 1700);
+    dim(880, 0.1); setTimeout(() => dim(1320, 0.12), 90);
   }
 
   function finalizar() {
     terminado = true; jatoAtivo = false;
-    const nota = tinta > 0.995 ? 'Lataria intacta e brilhando. Serviço de profissional.'
-      : tinta > 0.9 ? 'Limpou, mas deixou marca de bico na pintura.'
+    document.getElementById('fimTitulo').textContent =
+      realista && tinta <= 0.9 ? 'Carro lavado (e lixado)' : 'Carro lavado';
+    document.getElementById('fimTexto').textContent = !realista
+      ? `Todas as ${PARTES.length} peças fechadas.`
+      : tinta > 0.995 ? 'Todas as peças fechadas e a lataria intacta. Serviço de profissional.'
+      : tinta > 0.9 ? 'Limpou tudo, mas deixou marca de bico na pintura.'
       : 'O carro está limpo. A tinta é que não sobreviveu.';
-    document.getElementById('fimTitulo').textContent = tinta > 0.9 ? 'Carro lavado' : 'Carro lavado (e lixado)';
-    document.getElementById('fimTexto').textContent = nota;
     document.getElementById('fimTempo').textContent = fmtTempo(tempo);
     document.getElementById('fimLimpo').textContent = `${Math.round(pctLimpo * 100)}%`;
-    document.getElementById('fimDano').textContent = `${Math.round(tinta * 100)}%`;
+    document.getElementById('fimDano').textContent = realista ? `${Math.round(tinta * 100)}%` : '—';
     document.getElementById('fim').classList.add('on');
+    dim(660, .1); setTimeout(() => dim(880, .1), 110); setTimeout(() => dim(1320, .12), 230);
   }
 
   /* ─────────── entrada ─────────── */
@@ -879,6 +1079,22 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     elBicos.appendChild(el);
   });
 
+  const pecaEls = [];
+  const elPecas = document.getElementById('pecas');
+  PARTES.forEach((nome, i) => {
+    const el = document.createElement('div');
+    el.className = 'peca';
+    el.innerHTML = `<span class="peca__nome">${nome}</span>` +
+                   `<span class="peca__pct">0%</span>` +
+                   `<span class="peca__barra"><i></i></span>`;
+    elPecas.appendChild(el);
+    pecaEls[i + 1] = {
+      raiz: el,
+      pct: el.querySelector('.peca__pct'),
+      barra: el.querySelector('.peca__barra i')
+    };
+  });
+
   const elCores = document.getElementById('cores');
   PINTURAS.forEach((p, i) => {
     const el = document.createElement('button');
@@ -913,6 +1129,12 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
     if (som) iniciarSom();
   });
 
+  document.getElementById('btnRealista').addEventListener('click', (e) => {
+    realista = !realista;
+    e.target.textContent = `Modo realista: ${realista ? 'on' : 'off'}`;
+    e.target.setAttribute('aria-pressed', String(realista));
+  });
+
   document.getElementById('btnDica').addEventListener('click', () => {
     dicaAte = performance.now() + 1600;
   });
@@ -920,7 +1142,9 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
   function reiniciar() {
     gerarSujeira();
     tinta = 1; danoAcum = 0; tempo = 0; rodando = false; terminado = false;
-    particulas = [];
+    particulas = []; ponteiroAnt = null;
+    dctx.clearRect(0, 0, W, H);
+    document.getElementById('feito').innerHTML = '';
     document.getElementById('fim').classList.remove('on');
     document.getElementById('partida').style.display = '';
     atualizaHud();
@@ -930,6 +1154,8 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: 
 
   /* ─────────── partida ─────────── */
   lerDist();
+  desenhaMapa();        // geometria é fixa: mapa e amostras só uma vez
+  prepararAmostras();
   gerarSujeira();
   atualizaHud();
   requestAnimationFrame(laco);
