@@ -91,8 +91,21 @@ new GLTFLoader().load(
       pecas.push(o);
     });
 
-    // o modelo vem em metros de brinquedo; encaixa numa caixa conhecida
-    const caixa = new THREE.Box3().setFromObject(carro);
+    // Box3.setFromObject ignora visibilidade e englobaria o pano escondido —
+    // um drapeado que desce bem abaixo do carro. Isso inflava a caixa, jogava
+    // o carro para o topo dela e fazia a classificação por altura errar.
+    const caixaVisivel = (raiz) => {
+      const b = new THREE.Box3();
+      raiz.updateWorldMatrix(true, true);
+      raiz.traverse((o) => {
+        if (!o.isMesh || !o.visible) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        b.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      });
+      return b;
+    };
+
+    const caixa = caixaVisivel(carro);
     const tam = caixa.getSize(new THREE.Vector3());
     const centro = caixa.getCenter(new THREE.Vector3());
     carro.position.sub(centro);
@@ -111,7 +124,7 @@ new GLTFLoader().load(
     s.near = 0.01; s.far = raio * 12; s.updateProjectionMatrix();
     chao.scale.setScalar(raio * 4);
 
-    sujeira = new Sujeira(carro, new THREE.Box3().setFromObject(carro));
+    sujeira = new Sujeira(carro, caixaVisivel(carro));
     montarPainel(sujeira);
     atualizarPainel(sujeira);
 

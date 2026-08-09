@@ -11,7 +11,7 @@ import * as THREE from 'three';
 
 export const PARTES = [
   'Teto', 'Vidros', 'Capô', 'Traseira',
-  'Lateral esquerda', 'Lateral direita', 'Rodas', 'Para-choques'
+  'Lateral esquerda', 'Lateral direita', 'Rodas', 'Para-choques e saias'
 ];
 const NP = PARTES.length;
 
