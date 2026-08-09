@@ -68,8 +68,9 @@ const aviso = document.getElementById('aviso');
 let carro = null;
 const pecas = [];   // malhas candidatas a virar tarefa da lista
 
+// caminho relativo ao base: em Pages de projeto o site não fica na raiz
 new GLTFLoader().load(
-  '/ToyCar.glb',
+  `${import.meta.env.BASE_URL}ToyCar.glb`,
   (gltf) => {
     carro = gltf.scene;
 

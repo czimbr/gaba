@@ -1,0 +1,49 @@
+name: Publicar o Lava-Jato 3D no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['lava-jato-3d/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+# Pages de projeto serve em /<repo>/, e é isso que o BASE_PATH informa ao Vite.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# uma publicação de cada vez, sem cancelar a que já está no ar
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lava-jato-3d
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lava-jato-3d/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: lava-jato-3d/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

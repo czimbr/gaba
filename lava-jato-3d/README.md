@@ -45,5 +45,22 @@ não se sustenta com este modelo. A lista terá de sair de outra divisão — po
 região no espaço do modelo ou por material — ou de um modelo com mais peças
 nomeadas.
 
-Diferente da versão em arquivo único, esta **não** abre como link: precisa de
-`npm install`.
+## Publicar
+
+Compila para arquivos estáticos — é um site normal, não precisa de servidor.
+
+```sh
+npm run build        # gera dist/
+BASE_PATH=/gaba/ npm run build   # para GitHub Pages de projeto
+```
+
+Já existe o fluxo `.github/workflows/pages.yml`, que compila e publica a cada
+push na `main`. **Falta um passo manual:** em *Settings → Pages*, mudar a
+origem para **GitHub Actions**. O endereço fica `https://<usuário>.github.io/gaba/`.
+
+Para Netlify, Vercel ou Cloudflare Pages: diretório `lava-jato-3d`, comando
+`npm run build`, saída `dist`, e nada de `BASE_PATH` (servem na raiz).
+
+O build sai com **5,8 MB**, quase tudo do modelo. Comprimir a malha com Draco ou
+meshopt derruba isso bastante e é o próximo ajuste óbvio se o primeiro
+carregamento incomodar.
