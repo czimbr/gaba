@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lava-Jato — modelo real, PBR e reflexo de ambiente</title>
+<style>
+  :root { --grafite:#14171a; --aco:#1f2429; --giz:#e8eaec; --concreto:#6d757d; --maquina:#f5c518; --agua:#4cc4e8;
+          --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--grafite); color:var(--giz);
+              font:400 16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; width:100%; height:100%; touch-action:none; }
+  .painel {
+    position:fixed; left:1rem; top:1rem; background:rgba(11,14,17,.82); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.09); border-radius:12px; padding:.75rem .875rem; max-width:19rem;
+  }
+  .painel h1 { margin:0 0 .125rem; font-size:1rem; font-weight:700; letter-spacing:-.02em; }
+  .painel p { margin:0; font:500 .625rem/1.5 var(--mono); letter-spacing:.1em;
+              text-transform:uppercase; color:var(--concreto); }
+  .linha { display:flex; justify-content:space-between; gap:1rem; margin-top:.5rem;
+           font:500 .6875rem/1.4 var(--mono); color:var(--concreto); }
+  .linha b { color:var(--agua); font-variant-numeric:tabular-nums; }
+  .aviso { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+           font:500 .75rem/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--concreto); }
+  .rodape { position:fixed; left:1rem; bottom:1rem; font:500 .625rem/1.5 var(--mono); color:#4d545a; max-width:24rem; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="painel">
+    <h1>Lava-Jato</h1>
+    <p>Modelo real · PBR · reflexo de ambiente</p>
+    <div class="linha"><span>Malha</span><b id="mTris">—</b></div>
+    <div class="linha"><span>Vértices</span><b id="mVerts">—</b></div>
+    <div class="linha"><span>Peças no modelo</span><b id="mPecas">—</b></div>
+  </div>
+  <div class="aviso" id="aviso">Carregando modelo…</div>
+  <p class="rodape">Modelo “Toy Car” do Khronos Group, CC0 1.0. Ambiente gerado por código (RoomEnvironment), sem asset externo.</p>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
