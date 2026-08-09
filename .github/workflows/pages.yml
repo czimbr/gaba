@@ -2,7 +2,6 @@ name: Publicar o Lava-Jato 3D no GitHub Pages
 
 on:
   push:
-    branches: [main]
     paths: ['lava-jato-3d/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
@@ -19,6 +18,10 @@ concurrency:
 
 jobs:
   build:
+    # Publica a partir da branch padrão, sem fixar o nome dela: o ambiente
+    # github-pages só aceita implantação da padrão, e neste repositório ela
+    # não se chama main.
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     defaults:
       run:
