@@ -1,0 +1,937 @@
+<title>Lava-Jato — Simulador de Máquina de Pressão</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<style>
+:root {
+  --grafite:  #14171a;
+  --aco:      #1f2429;
+  --aco-alto: #2a3138;
+  --concreto: #6d757d;
+  --giz:      #e8eaec;
+  --maquina:  #f5c518;
+  --agua:     #4cc4e8;
+  --alerta:   #e5484d;
+  --ok:       #35c47a;
+
+  --borda: rgba(255,255,255,.09);
+  --r: 14px;
+
+  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+
+body {
+  background: var(--grafite);
+  color: var(--giz);
+  font: 400 16px/1.5 var(--ui);
+  -webkit-text-size-adjust: 100%;
+  padding: clamp(.75rem, 2vw, 1.5rem);
+}
+
+/* grid, não flex coluna: como item de flex os filhos encolhiam e
+   esmagavam o visor bem abaixo da altura do próprio canvas */
+.maq { width: 100%; max-width: 1040px; margin: 0 auto; display: grid; gap: .875rem; }
+
+/* ─────────── cabeçalho ─────────── */
+.topo { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.marca { display: flex; align-items: center; gap: .75rem; }
+.marca__selo {
+  width: 2.5rem; height: 2.5rem; flex: none; border-radius: 9px;
+  background: var(--maquina); color: var(--grafite);
+  display: grid; place-items: center; font: 700 1.375rem/1 var(--ui);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.22);
+}
+.marca h1 { margin: 0; font: 700 1.25rem/1.1 var(--ui); letter-spacing: -.025em; }
+.marca p {
+  margin: .1875rem 0 0; font: 500 .6875rem/1 var(--mono);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--concreto);
+}
+
+/* ─────────── visor ─────────── */
+.visor {
+  position: relative; border-radius: var(--r); overflow: hidden;
+  background: #0e1114; border: 1px solid var(--borda);
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -24px #000;
+}
+canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+
+.hud {
+  position: absolute; inset: .625rem .625rem auto; display: flex; gap: .5rem;
+  justify-content: space-between; align-items: flex-start; pointer-events: none;
+}
+.leitura {
+  background: rgba(14,17,20,.82); backdrop-filter: blur(6px);
+  border: 1px solid var(--borda); border-radius: 9px;
+  padding: .375rem .625rem; display: flex; flex-direction: column; gap: .125rem;
+}
+.leitura span {
+  font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--concreto);
+}
+.leitura b { font: 700 1.0625rem/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.leitura b.agua { color: var(--agua); }
+.leitura b.risco { color: var(--alerta); }
+
+.barra { height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); margin-top: .3125rem; overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--agua); width: 0%; transition: width .2s linear; }
+
+.aviso {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: .75rem;
+  display: flex; align-items: center; gap: .4375rem;
+  background: rgba(229,72,77,.14); border: 1px solid var(--alerta);
+  color: #ff9b9e; border-radius: 999px; padding: .3125rem .75rem;
+  font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  pointer-events: none; opacity: 0; transition: opacity .16s;
+}
+.aviso.on { opacity: 1; }
+.aviso::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--alerta); }
+
+/* dica de partida */
+.partida {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(14,17,20,.55); backdrop-filter: blur(2px);
+  font: 600 .8125rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--giz); text-align: center; padding: 1rem; pointer-events: none;
+}
+.partida span { display: block; border: 1px solid var(--borda); border-radius: 999px; padding: .625rem 1.125rem; background: rgba(20,23,26,.9); }
+
+/* fim */
+.fim {
+  position: absolute; inset: 0; display: none; place-items: center;
+  background: rgba(14,17,20,.86); backdrop-filter: blur(4px); padding: 1rem;
+}
+.fim.on { display: grid; }
+.fim__cx { text-align: center; max-width: 22rem; }
+.fim__cx h2 { margin: 0 0 .25rem; font: 700 1.5rem/1.1 var(--ui); letter-spacing: -.02em; }
+.fim__cx p { margin: 0; color: var(--concreto); font-size: .875rem; }
+.placar { display: flex; gap: .5rem; justify-content: center; margin: 1rem 0 1.25rem; }
+.placar div {
+  background: var(--aco); border: 1px solid var(--borda); border-radius: 10px;
+  padding: .5rem .75rem; min-width: 5.25rem;
+}
+.placar span { display: block; font: 500 .5625rem/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--concreto); margin-bottom: .25rem; }
+.placar b { font: 700 1.125rem/1 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ─────────── painel ─────────── */
+.painel {
+  background: var(--aco); border: 1px solid var(--borda); border-radius: var(--r);
+  padding: .875rem; display: grid; gap: .875rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) { .painel { grid-template-columns: 1.35fr 1fr; } }
+
+.bloco { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.rotulo {
+  font: 500 .5625rem/1 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--concreto);
+}
+
+/* bicos */
+.bicos { display: flex; gap: .375rem; }
+.bico {
+  flex: 1 1 0; min-width: 0; cursor: pointer; border-radius: 10px; padding: .5rem .25rem .4375rem;
+  background: var(--aco-alto); border: 1px solid var(--borda);
+  display: flex; flex-direction: column; align-items: center; gap: .3125rem;
+  font: inherit; color: var(--concreto); transition: background .12s, border-color .12s, color .12s;
+}
+.bico:hover { background: #333b43; color: var(--giz); }
+.bico__tip {
+  width: 100%; height: 9px; border-radius: 3px; background: var(--cor);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.28);
+}
+.bico b { font: 700 .75rem/1 var(--mono); letter-spacing: -.01em; }
+.bico small { font: 500 .5rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.bico[aria-pressed="true"] { background: #39424b; border-color: var(--cor); color: var(--giz); }
+.bico:focus-visible, .btn:focus-visible, .cor:focus-visible { outline: 2px solid var(--maquina); outline-offset: 2px; }
+
+/* distância */
+.dist { display: flex; align-items: center; gap: .625rem; }
+.dist input { flex: 1; accent-color: var(--maquina); height: 1.5rem; }
+.dist b {
+  font: 700 .8125rem/1 var(--mono); font-variant-numeric: tabular-nums;
+  min-width: 3.25rem; text-align: right; color: var(--maquina);
+}
+
+/* pintura */
+.cores { display: flex; gap: .375rem; }
+.cor {
+  width: 2rem; height: 2rem; border-radius: 50%; cursor: pointer; flex: none;
+  border: 2px solid transparent; background: var(--cor); padding: 0;
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,.35);
+}
+.cor[aria-pressed="true"] { border-color: var(--giz); }
+
+/* botões */
+.acoes { display: flex; gap: .375rem; flex-wrap: wrap; }
+.btn {
+  cursor: pointer; border-radius: 9px; padding: .5rem .8125rem;
+  background: var(--aco-alto); border: 1px solid var(--borda); color: var(--giz);
+  font: 600 .6875rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+}
+.btn:hover { background: #39424b; }
+.btn--forte { background: var(--maquina); border-color: var(--maquina); color: var(--grafite); }
+.btn--forte:hover { background: #ffd534; }
+
+/* ─────────── manual ─────────── */
+.manual {
+  border: 1px solid var(--borda); border-radius: var(--r); padding: .875rem 1rem;
+  background: rgba(31,36,41,.5);
+}
+.manual h2 { margin: 0 0 .5rem; font: 500 .5625rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--concreto); }
+.manual ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .375rem; }
+@media (min-width: 640px) { .manual ul { grid-template-columns: 1fr 1fr; gap: .375rem 1.5rem; } }
+.manual li { display: flex; gap: .5rem; align-items: baseline; font-size: .8125rem; color: var(--concreto); }
+.manual li i { width: 8px; height: 8px; border-radius: 2px; flex: none; background: var(--cor); transform: translateY(-1px); }
+.manual li b { color: var(--giz); font-weight: 600; }
+
+.rodape { font-size: .75rem; color: var(--concreto); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="maq">
+
+  <header class="topo">
+    <div class="marca">
+      <div class="marca__selo" aria-hidden="true">◤</div>
+      <div>
+        <h1>Lava-Jato</h1>
+        <p>Simulador de máquina de pressão</p>
+      </div>
+    </div>
+    <div class="acoes">
+      <button type="button" class="btn" id="btnSom" aria-pressed="true">Som: ligado</button>
+      <button type="button" class="btn" id="btnDica">Onde falta?</button>
+      <button type="button" class="btn btn--forte" id="btnNovo">Sujar de novo</button>
+    </div>
+  </header>
+
+  <div class="visor">
+    <canvas id="cv" width="1000" height="620" aria-label="Carro sujo para lavar com máquina de pressão"></canvas>
+
+    <div class="hud">
+      <div class="leitura">
+        <span>Limpo</span>
+        <b class="agua" id="lePct">0%</b>
+        <div class="barra"><i id="leBarra"></i></div>
+      </div>
+      <div class="leitura">
+        <span>Pressão</span>
+        <b id="lePsi">0</b>
+      </div>
+      <div class="leitura">
+        <span>Tempo</span>
+        <b id="leTempo">0:00</b>
+      </div>
+      <div class="leitura">
+        <span>Pintura</span>
+        <b id="leDano">100%</b>
+      </div>
+    </div>
+
+    <div class="aviso" id="aviso">Bico 0° perto demais — descascando a tinta</div>
+    <div class="partida" id="partida"><span>Segure o clique para acionar o gatilho</span></div>
+
+    <div class="fim" id="fim">
+      <div class="fim__cx">
+        <h2 id="fimTitulo">Carro lavado</h2>
+        <p id="fimTexto">Nada mal.</p>
+        <div class="placar">
+          <div><span>Tempo</span><b id="fimTempo">0:00</b></div>
+          <div><span>Limpeza</span><b id="fimLimpo">0%</b></div>
+          <div><span>Pintura</span><b id="fimDano">100%</b></div>
+        </div>
+        <button type="button" class="btn btn--forte" id="btnDeNovo">Lavar outro</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="painel">
+    <div class="bloco">
+      <div class="rotulo">Bico — a cor é o ângulo do leque</div>
+      <div class="bicos" id="bicos" role="group" aria-label="Escolha do bico"></div>
+    </div>
+
+    <div class="bloco">
+      <div class="rotulo">Distância da lataria</div>
+      <div class="dist">
+        <input type="range" id="dist" min="0" max="100" value="35" aria-label="Distância da lataria">
+        <b id="distVal">25 cm</b>
+      </div>
+      <div class="rotulo">Pintura do carro</div>
+      <div class="cores" id="cores" role="group" aria-label="Cor do carro"></div>
+    </div>
+  </div>
+
+  <section class="manual">
+    <h2>Como cada bico se comporta — igual ao equipamento de verdade</h2>
+    <ul id="manual"></ul>
+  </section>
+
+  <p class="rodape">A codificação de cor dos bicos é a usada em máquinas de pressão reais. O bico vermelho de 0° concentra todo o jato num ponto e realmente arranca tinta se chegar perto — aqui isso também acontece.</p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const W = 1000, H = 620;
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  /* ─────────── bicos ─────────── */
+  const BICOS = [
+    { ang: '0°',    cor: '#e5484d', nome: 'Vermelho', raio: 26,  poder: 2.30, solta: 0.30, psi: 2600, dano: true,
+      nota: 'Jato-agulha. Arranca sujeira grudada — e tinta, se chegar perto.' },
+    { ang: '15°',   cor: '#f5c518', nome: 'Amarelo',  raio: 42,  poder: 1.35, solta: 0.40, psi: 2100,
+      nota: 'Leque estreito. Bom para crosta de barro no para-lama.' },
+    { ang: '25°',   cor: '#35c47a', nome: 'Verde',    raio: 62,  poder: 0.85, solta: 0.45, psi: 1700,
+      nota: 'Uso geral. É com ele que se lava a maior parte do carro.' },
+    { ang: '40°',   cor: '#e8eaec', nome: 'Branco',   raio: 88,  poder: 0.52, solta: 0.50, psi: 1300,
+      nota: 'Leque largo e suave. Enxágue e acabamento sem risco.' },
+    { ang: 'Sabão', cor: '#2a3138', nome: 'Preto',    raio: 112, poder: 0.05, solta: 1.60, psi: 500,
+      nota: 'Quase não limpa: aplica detergente e solta a sujeira para o enxágue.' }
+  ];
+
+  const PINTURAS = [
+    { nome: 'Branco',   base: '#dfe3e6', escuro: '#a8b0b6', claro: '#ffffff' },
+    { nome: 'Vermelho', base: '#b4292d', escuro: '#7b1a1e', claro: '#e8595c' },
+    { nome: 'Azul',     base: '#22557f', escuro: '#143850', claro: '#4a8bbd' },
+    { nome: 'Grafite',  base: '#3a4046', escuro: '#22272b', claro: '#5f686f' }
+  ];
+
+  const CELULA = 20;
+  const COLS = Math.ceil(W / CELULA), ROWS = Math.ceil(H / CELULA);
+
+  /* ─────────── estado ─────────── */
+  let bico = 2, distancia = 0.35, pintura = 0;
+  let jatoAtivo = false, ponteiro = { x: W / 2, y: H / 2 }, ponteiroAnt = null, temPonteiro = false;
+  let dureza = new Float32Array(COLS * ROWS);
+  let sujeiraInicial = 1, sujeiraAtual = 1, pctLimpo = 0;
+  let tinta = 1, danoAcum = 0, riscoAtivo = false;
+  let t0 = 0, tempo = 0, rodando = false, terminado = false;
+  let dicaAte = 0, som = true;
+  let particulas = [];
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* camadas fora de tela */
+  const sujo = document.createElement('canvas'); sujo.width = W; sujo.height = H;
+  const sctx = sujo.getContext('2d', { willReadFrequently: true });
+  const danoCv = document.createElement('canvas'); danoCv.width = W; danoCv.height = H;
+  const dctx = danoCv.getContext('2d');
+  const scratch = document.createElement('canvas'); scratch.width = W; scratch.height = H;
+  const xctx = scratch.getContext('2d');
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+  /* ─────────── silhueta do carro ─────────── */
+  function silhueta(c) {
+    c.beginPath();
+    c.moveTo(150, 398);
+    c.lineTo(152, 366);
+    c.quadraticCurveTo(155, 346, 182, 339);
+    c.lineTo(302, 326);
+    c.lineTo(392, 250);
+    c.quadraticCurveTo(402, 243, 418, 243);
+    c.lineTo(626, 243);
+    c.quadraticCurveTo(646, 244, 655, 254);
+    c.lineTo(744, 328);
+    c.lineTo(848, 336);
+    c.quadraticCurveTo(868, 340, 870, 362);
+    c.lineTo(872, 404);
+    c.quadraticCurveTo(872, 424, 852, 428);
+    c.lineTo(776, 432);
+    c.arc(700, 436, 76, 0, Math.PI, true);
+    c.lineTo(390, 432);
+    c.arc(312, 436, 76, 0, Math.PI, true);
+    c.lineTo(168, 428);
+    c.quadraticCurveTo(150, 424, 150, 398);
+    c.closePath();
+  }
+
+  function roda(c, cx, cy) {
+    c.fillStyle = '#0c0e10';
+    c.beginPath(); c.arc(cx, cy, 62, 0, 7); c.fill();
+    const g = c.createRadialGradient(cx - 8, cy - 10, 6, cx, cy, 40);
+    g.addColorStop(0, '#8d959b'); g.addColorStop(1, '#4a5158');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(cx, cy, 36, 0, 7); c.fill();
+    c.strokeStyle = '#2b3136'; c.lineWidth = 3;
+    for (let i = 0; i < 5; i++) {
+      const a = i * Math.PI * 2 / 5 - 1.2;
+      c.beginPath(); c.moveTo(cx + Math.cos(a) * 9, cy + Math.sin(a) * 9);
+      c.lineTo(cx + Math.cos(a) * 32, cy + Math.sin(a) * 32); c.stroke();
+    }
+    c.fillStyle = '#2b3136';
+    c.beginPath(); c.arc(cx, cy, 8, 0, 7); c.fill();
+  }
+
+  function desenhaCarro(c) {
+    const p = PINTURAS[pintura];
+
+    // sombra no chão
+    const sg = c.createRadialGradient(510, 500, 20, 510, 500, 380);
+    sg.addColorStop(0, 'rgba(0,0,0,.5)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sg;
+    c.beginPath(); c.ellipse(510, 500, 380, 34, 0, 0, 7); c.fill();
+
+    roda(c, 312, 436); roda(c, 700, 436);
+
+    // corpo
+    c.save(); silhueta(c);
+    const g = c.createLinearGradient(0, 230, 0, 450);
+    g.addColorStop(0, p.claro); g.addColorStop(.42, p.base); g.addColorStop(1, p.escuro);
+    c.fillStyle = g; c.fill();
+
+    // reflexo alto da lataria
+    c.clip();
+    c.fillStyle = 'rgba(255,255,255,.16)';
+    c.beginPath(); c.moveTo(150, 352); c.lineTo(880, 340); c.lineTo(880, 356); c.lineTo(150, 372); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(0,0,0,.18)';
+    c.fillRect(0, 404, W, 40);
+    c.restore();
+
+    // vidros
+    c.fillStyle = '#171c21';
+    c.beginPath();
+    c.moveTo(316, 322); c.lineTo(398, 258); c.lineTo(494, 258); c.lineTo(494, 322); c.closePath(); c.fill();
+    c.beginPath();
+    c.moveTo(508, 258); c.lineTo(620, 258); c.lineTo(700, 322); c.lineTo(508, 322); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.09)';
+    c.beginPath(); c.moveTo(330, 318); c.lineTo(400, 264); c.lineTo(432, 264); c.lineTo(352, 318); c.closePath(); c.fill();
+
+    // vincos e frisos
+    c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 2.5;
+    c.beginPath(); c.moveTo(500, 258); c.lineTo(500, 424); c.stroke();
+    c.beginPath(); c.moveTo(302, 328); c.lineTo(302, 420); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,.2)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(176, 344); c.lineTo(300, 331); c.stroke();
+
+    // maçanetas
+    c.fillStyle = 'rgba(0,0,0,.4)';
+    c.fillRect(452, 338, 34, 7); c.fillRect(636, 338, 34, 7);
+
+    // faróis
+    c.fillStyle = '#f2e6c4';
+    c.beginPath(); c.moveTo(152, 356); c.lineTo(196, 350); c.lineTo(198, 372); c.lineTo(153, 375); c.closePath(); c.fill();
+    c.fillStyle = '#c4373a';
+    c.beginPath(); c.moveTo(846, 350); c.lineTo(868, 353); c.lineTo(869, 378); c.lineTo(846, 376); c.closePath(); c.fill();
+
+    // frisos escuros embaixo
+    c.fillStyle = 'rgba(0,0,0,.34)';
+    c.fillRect(168, 416, 690, 12);
+  }
+
+  /* ─────────── cenário ─────────── */
+  function fundo(c) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#191e23'); g.addColorStop(.62, '#12161a'); g.addColorStop(.63, '#191d21'); g.addColorStop(1, '#0c0f12');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+    // painéis da parede
+    c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 2;
+    for (let x = 90; x < W; x += 132) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 388); c.stroke(); }
+    c.beginPath(); c.moveTo(0, 388); c.lineTo(W, 388); c.stroke();
+
+    // luz de teto
+    const l = c.createRadialGradient(500, 40, 10, 500, 40, 460);
+    l.addColorStop(0, 'rgba(245,197,24,.11)'); l.addColorStop(1, 'rgba(245,197,24,0)');
+    c.fillStyle = l; c.fillRect(0, 0, W, 400);
+
+    // ralo
+    c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 3;
+    for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(430 + i * 15, 560); c.lineTo(430 + i * 15, 596); c.stroke(); }
+  }
+
+  /* ─────────── sujeira ─────────── */
+  function gerarSujeira() {
+    sctx.clearRect(0, 0, W, H);
+    dctx.clearRect(0, 0, W, H);
+    dureza.fill(0);
+
+    sctx.save();
+    silhueta(sctx);
+    sctx.clip();
+
+    // camada de encardido: cobre tudo e escurece para baixo
+    const base = sctx.createLinearGradient(0, 236, 0, 452);
+    base.addColorStop(0, 'rgba(96,78,54,.42)');
+    base.addColorStop(.55, 'rgba(84,66,44,.62)');
+    base.addColorStop(1, 'rgba(58,44,28,.86)');
+    sctx.fillStyle = base;
+    sctx.fillRect(0, 230, W, 230);
+
+    // manchas de poeira assentada
+    for (let i = 0; i < 320; i++) {
+      const x = rnd(140, 890), y = rnd(238, 448);
+      const baixo = clamp((y - 240) / 205, 0, 1);
+      const r = rnd(22, 82);
+      const g = sctx.createRadialGradient(x, y, 0, x, y, r);
+      const a = rnd(.22, .5) * (.5 + baixo * .75);
+      g.addColorStop(0, `rgba(78,60,38,${a})`);
+      g.addColorStop(1, 'rgba(78,60,38,0)');
+      sctx.fillStyle = g;
+      sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
+    }
+
+    // granulado, para a sujeira não virar borrão liso
+    for (let i = 0; i < 2600; i++) {
+      const x = rnd(140, 890), y = rnd(238, 450);
+      sctx.fillStyle = `rgba(${44 + Math.random() * 40 | 0},${34 + Math.random() * 30 | 0},22,${rnd(.15, .5)})`;
+      sctx.fillRect(x, y, rnd(1, 3), rnd(1, 3));
+    }
+
+    // escorridos de chuva
+    for (let i = 0; i < 60; i++) {
+      const x = rnd(150, 880), y = rnd(246, 330), h = rnd(60, 175);
+      const g = sctx.createLinearGradient(x, y, x, y + h);
+      g.addColorStop(0, 'rgba(52,40,24,.55)'); g.addColorStop(1, 'rgba(52,40,24,0)');
+      sctx.fillStyle = g;
+      sctx.fillRect(x, y, rnd(4, 12), h);
+    }
+
+    // barro respingado da estrada
+    for (let i = 0; i < 620; i++) {
+      const x = rnd(150, 880);
+      const y = rnd(346, 450);
+      const r = rnd(2, 13);
+      sctx.fillStyle = `rgba(${56 + Math.random() * 26 | 0},${42 + Math.random() * 20 | 0},26,${rnd(.45, .88)})`;
+      sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
+      marcaDureza(x, y, r + 8, rnd(.28, .52));
+    }
+
+    // crosta nos para-lamas
+    for (const cx of [312, 700]) {
+      for (let i = 0; i < 130; i++) {
+        const a = rnd(Math.PI * 1.05, Math.PI * 1.95);
+        const rr = rnd(76, 116);
+        const x = cx + Math.cos(a) * rr, y = 436 + Math.sin(a) * rr;
+        const r = rnd(6, 20);
+        sctx.fillStyle = `rgba(58,44,28,${rnd(.4, .8)})`;
+        sctx.beginPath(); sctx.arc(x, y, r, 0, 7); sctx.fill();
+        marcaDureza(x, y, r + 12, rnd(.5, .8));
+      }
+    }
+
+    // cocô de passarinho: pequeno, nas superfícies de cima, com escorrido
+    for (let i = 0, n = 3 + (Math.random() * 3 | 0); i < n; i++) {
+      const x = rnd(200, 830), y = rnd(248, 350), r = rnd(6, 11);
+      sctx.fillStyle = 'rgba(232,228,214,.9)';
+      for (let k = 0; k < 5; k++) {
+        const a = rnd(0, Math.PI * 2), d = rnd(0, r * .8);
+        sctx.beginPath();
+        sctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * rnd(.45, .8), 0, 7);
+        sctx.fill();
+      }
+      sctx.fillStyle = 'rgba(232,228,214,.6)';
+      sctx.fillRect(x - 2, y, rnd(3, 5), rnd(8, 22));  // escorrido
+      marcaDureza(x, y, r + 12, .95);
+    }
+
+    // piche e resina: respingos escuros pequenos nos painéis baixos
+    for (let i = 0, n = 10 + (Math.random() * 8 | 0); i < n; i++) {
+      const x = rnd(180, 850), y = rnd(352, 428), r = rnd(4, 9);
+      sctx.fillStyle = 'rgba(22,16,10,.95)';
+      for (let k = 0; k < 4; k++) {
+        const a = rnd(0, Math.PI * 2), d = rnd(0, r * .9);
+        sctx.beginPath();
+        sctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * rnd(.4, .75), 0, 7);
+        sctx.fill();
+      }
+      marcaDureza(x, y, r + 10, .92);
+    }
+
+    sctx.restore();
+
+    sujeiraInicial = medirSujeira() || 1;
+    sujeiraAtual = sujeiraInicial;
+    pctLimpo = 0;
+  }
+
+  function marcaDureza(x, y, r, v) {
+    const i0 = clamp((x - r) / CELULA | 0, 0, COLS - 1), i1 = clamp((x + r) / CELULA | 0, 0, COLS - 1);
+    const j0 = clamp((y - r) / CELULA | 0, 0, ROWS - 1), j1 = clamp((y + r) / CELULA | 0, 0, ROWS - 1);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = j * COLS + i;
+      if (v > dureza[k]) dureza[k] = v;
+    }
+  }
+
+  function medirSujeira() {
+    const d = sctx.getImageData(0, 0, W, H).data;
+    let n = 0;
+    for (let y = 0; y < H; y += 4) {
+      for (let x = 0; x < W; x += 4) {
+        if (d[(y * W + x) * 4 + 3] > 18) n++;
+      }
+    }
+    return n;
+  }
+
+  /* ─────────── jato ─────────── */
+  const raioAtual = () => BICOS[bico].raio * (0.62 + distancia * 1.15);
+  const forcaAtual = () => 1 - distancia * 0.55;
+
+  function jato(x, y, dt) {
+    const b = BICOS[bico];
+    const R = raioAtual();
+    const forca = forcaAtual();
+    // multiplicadores calibrados para o bico verde limpar um ponto em ~0,4 s:
+    // cada frame aplica destination-out, então o que resta cai por (1 − alpha)^frames
+    const poder = b.poder * forca * dt * 12;
+    const solta = b.solta * forca * dt * 3.2;
+
+    const i0 = clamp((x - R) / CELULA | 0, 0, COLS - 1), i1 = clamp((x + R) / CELULA | 0, 0, COLS - 1);
+    const j0 = clamp((y - R) / CELULA | 0, 0, ROWS - 1), j1 = clamp((y + R) / CELULA | 0, 0, ROWS - 1);
+
+    sctx.globalCompositeOperation = 'destination-out';
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const cx = i * CELULA + CELULA / 2, cy = j * CELULA + CELULA / 2;
+        const d = Math.hypot(cx - x, cy - y);
+        if (d > R) continue;
+        const queda = 1 - (d / R) ** 2;
+        const k = j * COLS + i;
+
+        // o jato vai soltando a sujeira grudada, então nada trava de vez
+        dureza[k] = Math.max(0, dureza[k] - solta * queda);
+
+        const alpha = poder * queda * (1 - dureza[k] * 0.88);
+        if (alpha <= 0.001) continue;
+
+        const g = sctx.createRadialGradient(cx, cy, 0, cx, cy, CELULA * 1.25);
+        g.addColorStop(0, `rgba(0,0,0,${Math.min(1, alpha)})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        sctx.fillStyle = g;
+        sctx.beginPath(); sctx.arc(cx, cy, CELULA * 1.25, 0, 7); sctx.fill();
+      }
+    }
+    sctx.globalCompositeOperation = 'source-over';
+
+    // dano de pintura: bico 0° encostado
+    riscoAtivo = false;
+    if (b.dano && distancia < 0.22) {
+      riscoAtivo = true;
+      const intens = (0.22 - distancia) / 0.22;
+      danoAcum += intens * dt * 0.55;
+      dctx.globalCompositeOperation = 'source-over';
+      const g = dctx.createRadialGradient(x, y, 0, x, y, R * 0.85);
+      g.addColorStop(0, `rgba(198,201,204,${0.16 * intens * dt * 9})`);
+      g.addColorStop(1, 'rgba(198,201,204,0)');
+      dctx.fillStyle = g;
+      dctx.save(); silhueta(dctx); dctx.clip();
+      dctx.beginPath(); dctx.arc(x, y, R * 0.85, 0, 7); dctx.fill();
+      dctx.restore();
+      tinta = Math.max(0, 1 - danoAcum / 26);
+    }
+  }
+
+  /* ─────────── partículas ─────────── */
+  function emitir(x, y) {
+    if (reduzido) return;
+    const b = BICOS[bico];
+    const n = b.ang === 'Sabão' ? 3 : 5;
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, Math.PI * 2), v = rnd(1.5, 7) * forcaAtual();
+      particulas.push({
+        x: x + rnd(-8, 8), y: y + rnd(-8, 8),
+        vx: Math.cos(a) * v, vy: Math.sin(a) * v - rnd(0, 2),
+        vida: 1, r: rnd(1.5, 4.5),
+        sabao: b.ang === 'Sabão'
+      });
+    }
+    if (particulas.length > 420) particulas.splice(0, particulas.length - 420);
+  }
+
+  function passoParticulas(dt) {
+    for (let i = particulas.length - 1; i >= 0; i--) {
+      const p = particulas[i];
+      p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
+      p.vy += dt * 28;
+      p.vida -= dt * 2.1;
+      if (p.vida <= 0) particulas.splice(i, 1);
+    }
+  }
+
+  function desenhaParticulas(c) {
+    for (const p of particulas) {
+      c.fillStyle = p.sabao
+        ? `rgba(245,247,250,${p.vida * .55})`
+        : `rgba(150,220,245,${p.vida * .6})`;
+      c.beginPath(); c.arc(p.x, p.y, p.r * p.vida, 0, 7); c.fill();
+    }
+  }
+
+  /* ─────────── lança e leque ─────────── */
+  function desenhaLanca(c, x, y) {
+    const ox = W - 40, oy = H + 46;              // punho logo abaixo do quadro
+    const ang = Math.atan2(y - oy, x - ox);
+    const R = raioAtual();
+    const comp = clamp(Math.hypot(x - ox, y - oy) - R - 14, 34, 230);
+    const tx = ox + Math.cos(ang) * comp, ty = oy + Math.sin(ang) * comp;
+
+    // tubo, discreto: a cena é o carro, não o equipamento
+    c.strokeStyle = 'rgba(40,46,52,.9)'; c.lineWidth = 9; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(ox, oy); c.lineTo(tx, ty); c.stroke();
+    c.strokeStyle = 'rgba(120,130,139,.85)'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(ox, oy); c.lineTo(tx, ty); c.stroke();
+    // bico
+    c.lineCap = 'butt';
+    c.fillStyle = BICOS[bico].cor;
+    c.beginPath(); c.arc(tx, ty, 9, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.45)'; c.lineWidth = 2; c.stroke();
+
+    if (!jatoAtivo) return;
+
+    // leque de água
+    const meio = Math.max(.06, R / Math.max(60, Math.hypot(x - tx, y - ty)));
+    const g = c.createLinearGradient(tx, ty, x, y);
+    const agua = BICOS[bico].ang === 'Sabão' ? '245,247,250' : '150,220,245';
+    g.addColorStop(0, `rgba(${agua},.55)`);
+    g.addColorStop(1, `rgba(${agua},.06)`);
+    c.fillStyle = g;
+    c.beginPath();
+    c.moveTo(tx, ty);
+    c.lineTo(x + Math.cos(ang + Math.PI / 2) * R, y + Math.sin(ang + Math.PI / 2) * R);
+    c.lineTo(x + Math.cos(ang - Math.PI / 2) * R, y + Math.sin(ang - Math.PI / 2) * R);
+    c.closePath(); c.fill();
+
+    // brilho do impacto
+    const im = c.createRadialGradient(x, y, 0, x, y, R);
+    im.addColorStop(0, `rgba(${agua},.4)`);
+    im.addColorStop(1, `rgba(${agua},0)`);
+    c.fillStyle = im;
+    c.beginPath(); c.arc(x, y, R, 0, 7); c.fill();
+  }
+
+  function desenhaMira(c, x, y) {
+    const R = raioAtual();
+    c.strokeStyle = 'rgba(232,234,236,.34)'; c.lineWidth = 1.5;
+    c.setLineDash([5, 6]);
+    c.beginPath(); c.arc(x, y, R, 0, 7); c.stroke();
+    c.setLineDash([]);
+  }
+
+  /* ─────────── som ─────────── */
+  let ac = null, ruido = null, filtro = null, ganho = null;
+  function iniciarSom() {
+    if (ac || !som) return;
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      const len = ac.sampleRate * 2;
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      ruido = ac.createBufferSource(); ruido.buffer = buf; ruido.loop = true;
+      filtro = ac.createBiquadFilter(); filtro.type = 'bandpass';
+      filtro.frequency.value = 1400; filtro.Q.value = 0.7;
+      ganho = ac.createGain(); ganho.gain.value = 0;
+      ruido.connect(filtro).connect(ganho).connect(ac.destination);
+      ruido.start();
+    } catch { ac = null; }
+  }
+  function ajustaSom() {
+    if (!ac || !ganho) return;
+    const alvo = jatoAtivo && som ? 0.055 + forcaAtual() * 0.06 : 0;
+    ganho.gain.setTargetAtTime(alvo, ac.currentTime, 0.05);
+    if (filtro) filtro.frequency.setTargetAtTime(700 + BICOS[bico].psi * 0.42 * forcaAtual(), ac.currentTime, 0.08);
+  }
+
+  /* ─────────── laço ─────────── */
+  let ultimo = performance.now(), acumMedida = 0;
+
+  function laco(agora) {
+    const dt = Math.min(0.05, (agora - ultimo) / 1000);
+    ultimo = agora;
+
+    if (jatoAtivo && !terminado) {
+      // varre o segmento percorrido desde o quadro anterior: aplicar o jato só
+      // na posição atual deixaria falhas quando o ponteiro anda rápido.
+      // dt é dividido entre os passos, então a água total do quadro não muda —
+      // movimento rápido limpa um risco mais longo e mais fraco, como na vida real.
+      const a = ponteiroAnt ?? ponteiro;
+      const dx = ponteiro.x - a.x, dy = ponteiro.y - a.y;
+      const passos = clamp(Math.ceil(Math.hypot(dx, dy) / (raioAtual() * 0.35)), 1, 24);
+      for (let i = 1; i <= passos; i++) {
+        jato(a.x + dx * i / passos, a.y + dy * i / passos, dt / passos);
+      }
+      ponteiroAnt = { x: ponteiro.x, y: ponteiro.y };
+      emitir(ponteiro.x, ponteiro.y);
+      if (!rodando) { rodando = true; t0 = agora; }
+    } else {
+      riscoAtivo = false;
+      ponteiroAnt = null;
+    }
+    if (rodando && !terminado) tempo = (agora - t0) / 1000;
+
+    passoParticulas(dt);
+
+    // medição periódica do que falta
+    acumMedida += dt;
+    if (acumMedida > 0.16) {
+      acumMedida = 0;
+      sujeiraAtual = medirSujeira();
+      pctLimpo = clamp(1 - sujeiraAtual / sujeiraInicial, 0, 1);
+      atualizaHud();
+      // 0,995 para o painel já marcar 100% no instante em que a lavagem fecha
+      if (pctLimpo >= 0.995 && !terminado) finalizar();
+    }
+
+    // desenho
+    fundo(ctx);
+    desenhaCarro(ctx);
+    ctx.drawImage(danoCv, 0, 0);
+    ctx.drawImage(sujo, 0, 0);
+
+    if (dicaAte > agora) {
+      const pulso = reduzido ? .5 : (Math.sin(agora / 110) * .5 + .5);
+      xctx.clearRect(0, 0, W, H);
+      xctx.drawImage(sujo, 0, 0);
+      xctx.globalCompositeOperation = 'source-in';
+      xctx.fillStyle = '#4cc4e8';
+      xctx.fillRect(0, 0, W, H);
+      xctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.35 + pulso * 0.45;
+      ctx.drawImage(scratch, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+
+    desenhaParticulas(ctx);
+    if (temPonteiro && !terminado) {
+      if (!jatoAtivo) desenhaMira(ctx, ponteiro.x, ponteiro.y);
+      desenhaLanca(ctx, ponteiro.x, ponteiro.y);
+    }
+
+    ajustaSom();
+    document.getElementById('aviso').classList.toggle('on', riscoAtivo);
+
+    requestAnimationFrame(laco);
+  }
+
+  /* ─────────── HUD ─────────── */
+  const fmtTempo = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  function atualizaHud() {
+    document.getElementById('lePct').textContent = `${Math.round(pctLimpo * 100)}%`;
+    document.getElementById('leBarra').style.width = `${pctLimpo * 100}%`;
+    document.getElementById('leTempo').textContent = fmtTempo(tempo);
+    const psi = jatoAtivo ? Math.round(BICOS[bico].psi * forcaAtual()) : 0;
+    document.getElementById('lePsi').textContent = psi;
+    const dn = document.getElementById('leDano');
+    dn.textContent = `${Math.round(tinta * 100)}%`;
+    dn.classList.toggle('risco', tinta < 0.995);
+  }
+
+  function finalizar() {
+    terminado = true; jatoAtivo = false;
+    const nota = tinta > 0.995 ? 'Lataria intacta e brilhando. Serviço de profissional.'
+      : tinta > 0.9 ? 'Limpou, mas deixou marca de bico na pintura.'
+      : 'O carro está limpo. A tinta é que não sobreviveu.';
+    document.getElementById('fimTitulo').textContent = tinta > 0.9 ? 'Carro lavado' : 'Carro lavado (e lixado)';
+    document.getElementById('fimTexto').textContent = nota;
+    document.getElementById('fimTempo').textContent = fmtTempo(tempo);
+    document.getElementById('fimLimpo').textContent = `${Math.round(pctLimpo * 100)}%`;
+    document.getElementById('fimDano').textContent = `${Math.round(tinta * 100)}%`;
+    document.getElementById('fim').classList.add('on');
+  }
+
+  /* ─────────── entrada ─────────── */
+  function paraLogico(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    if (terminado) return;
+    ponteiro = paraLogico(e); temPonteiro = true; jatoAtivo = true;
+    // captura é otimização, não requisito: lança NotFoundError se o ponteiro
+    // já saiu de cena, e não pode derrubar o acionamento do gatilho
+    try { cv.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+    iniciarSom();
+    if (ac?.state === 'suspended') ac.resume();
+    document.getElementById('partida').style.display = 'none';
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', (e) => { ponteiro = paraLogico(e); temPonteiro = true; });
+  cv.addEventListener('pointerup', () => { jatoAtivo = false; });
+  cv.addEventListener('pointercancel', () => { jatoAtivo = false; });
+  cv.addEventListener('pointerleave', () => { jatoAtivo = false; temPonteiro = false; });
+
+  /* ─────────── painel ─────────── */
+  const elBicos = document.getElementById('bicos');
+  BICOS.forEach((b, i) => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'bico';
+    el.style.setProperty('--cor', b.cor);
+    el.setAttribute('aria-pressed', String(i === bico));
+    el.innerHTML = `<i class="bico__tip"></i><b>${b.ang}</b><small>${b.nome}</small>`;
+    el.addEventListener('click', () => {
+      bico = i;
+      [...elBicos.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+      atualizaHud();
+    });
+    elBicos.appendChild(el);
+  });
+
+  const elCores = document.getElementById('cores');
+  PINTURAS.forEach((p, i) => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'cor';
+    el.style.setProperty('--cor', p.base);
+    el.title = p.nome;
+    el.setAttribute('aria-label', `Pintura ${p.nome}`);
+    el.setAttribute('aria-pressed', String(i === pintura));
+    el.addEventListener('click', () => {
+      pintura = i;
+      [...elCores.children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+    });
+    elCores.appendChild(el);
+  });
+
+  document.getElementById('manual').innerHTML = BICOS.map((b) =>
+    `<li><i style="--cor:${b.cor}"></i><span><b>${b.ang} ${b.nome.toLowerCase()}</b> — ${b.nota}</span></li>`
+  ).join('');
+
+  const elDist = document.getElementById('dist'), elDistVal = document.getElementById('distVal');
+  function lerDist() {
+    distancia = +elDist.value / 100;
+    elDistVal.textContent = `${Math.round(5 + distancia * 55)} cm`;
+    atualizaHud();
+  }
+  elDist.addEventListener('input', lerDist);
+
+  document.getElementById('btnSom').addEventListener('click', (e) => {
+    som = !som;
+    e.target.textContent = `Som: ${som ? 'ligado' : 'mudo'}`;
+    e.target.setAttribute('aria-pressed', String(som));
+    if (som) iniciarSom();
+  });
+
+  document.getElementById('btnDica').addEventListener('click', () => {
+    dicaAte = performance.now() + 1600;
+  });
+
+  function reiniciar() {
+    gerarSujeira();
+    tinta = 1; danoAcum = 0; tempo = 0; rodando = false; terminado = false;
+    particulas = [];
+    document.getElementById('fim').classList.remove('on');
+    document.getElementById('partida').style.display = '';
+    atualizaHud();
+  }
+  document.getElementById('btnNovo').addEventListener('click', reiniciar);
+  document.getElementById('btnDeNovo').addEventListener('click', reiniciar);
+
+  /* ─────────── partida ─────────── */
+  lerDist();
+  gerarSujeira();
+  atualizaHud();
+  requestAnimationFrame(laco);
+})();
+</script>
